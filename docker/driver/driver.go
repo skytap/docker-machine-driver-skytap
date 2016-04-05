@@ -125,7 +125,7 @@ func (d *Driver) Create() error {
 		}
 
 		//TODO: Multiple networks?
-		if d.deviceConfig.VPNId != nil {
+		if d.deviceConfig.VPNId != "" {
 			_, err := env.Networks[0].AttachToVpn(d.client, env.Id, d.deviceConfig.VPNId)
 			if err != nil {
 				return err
@@ -207,6 +207,14 @@ func (d *Driver) GetSSHPort() (int, error) {
 
 func (d *Driver) GetSSHUsername() string {
 	return d.base.GetSSHUsername()
+}
+
+func (d *Driver) GetMachineName() string {
+	return d.base.GetMachineName()
+}
+
+func (d *Driver) PreCreateCheck() error {
+	return nil
 }
 
 func (d *Driver) GetURL() (string, error) {
