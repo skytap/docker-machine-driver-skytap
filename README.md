@@ -16,4 +16,3 @@ Change to a project root directory like ~/work/skytap
     go test -v github.com/skytap/docker-machine-driver-skytap/api
      
     
-    
