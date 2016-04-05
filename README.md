@@ -8,8 +8,8 @@ support based on this API client.
 Change to a project root directory like ~/work/skytap
     
     export GOPATH=`pwd`
-    go get -t github.com/skytap/go-skytap
-    go test -v github.com/skytap/go-skytap/api
+    go get -t github.com/skytap/docker-machine-driver-skytap
+    go test -v github.com/skytap/docker-machine-driver-skytap/api
      
     
     

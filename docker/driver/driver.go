@@ -7,7 +7,7 @@ import (
 	"github.com/docker/machine/libmachine/drivers"
 	"github.com/docker/machine/libmachine/mcnflag"
 	"github.com/docker/machine/libmachine/state"
-	"github.com/go-skytap/api"
+	"github.com/skytap/docker-machine-driver-skytap/api"
 )
 
 const (
