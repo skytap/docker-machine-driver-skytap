@@ -4,10 +4,16 @@ import (
 	"fmt"
 
 	"errors"
+	"github.com/Sirupsen/logrus"
 	"github.com/docker/machine/libmachine/drivers"
+	"github.com/docker/machine/libmachine/log"
 	"github.com/docker/machine/libmachine/mcnflag"
+	dockerSsh "github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
 	"github.com/skytap/docker-machine-driver-skytap/api"
+	"github.com/tmc/scp"
+	"golang.org/x/crypto/ssh"
+	"time"
 )
 
 const (
@@ -20,10 +26,11 @@ const (
 // connect to existing Docker hosts by specifying the URL of the host as
 // an option.
 type Driver struct {
-	base         *drivers.BaseDriver
-	client       api.SkytapClient
-	deviceConfig deviceConfig
-	vm           api.VirtualMachine
+	*drivers.BaseDriver
+	ClientCredentials api.SkytapCredentials
+	DeviceConfig      deviceConfig
+	Vm                api.VirtualMachine
+	LogLevel          logrus.Level
 }
 
 type deviceConfig struct {
@@ -33,7 +40,16 @@ type deviceConfig struct {
 }
 
 func NewDriver(hostName, storePath string) drivers.Driver {
-	return &Driver{}
+	return &Driver{
+		ClientCredentials: api.SkytapCredentials{},
+		DeviceConfig:      deviceConfig{},
+		Vm:                api.VirtualMachine{},
+		LogLevel:          logrus.WarnLevel,
+		BaseDriver: &drivers.BaseDriver{
+			MachineName: hostName,
+			StorePath:   storePath,
+		},
+	}
 }
 
 func (d *Driver) GetCreateFlags() []mcnflag.Flag {
@@ -84,103 +100,212 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "SKYTAP_SSH_PORT",
 		},
 		mcnflag.StringFlag{
-			Name:   "skytap-icnr-env-id",
-			Usage:  "The id of the environment containing the network to connect to",
-			Value:  "",
-			EnvVar: "SKYTAP_SSH_KEY",
-		},
-		mcnflag.StringFlag{
-			Name:   "skytap-icnr-network-id",
-			Usage:  "The id of the network within the environment to connect to.",
-			Value:  "",
-			EnvVar: "SKYTAP_SSH_PORT",
+			Name:  "skytap-api-logging-level",
+			Usage: "The logging level to use when running api commands.",
+			Value: "info",
 		},
 	}
 }
 
 func (d *Driver) Create() error {
+	d.SetLogLevel()
+	log.Info("Creating docker machine in Skytap")
+	log.Debug("Skytap client auth: %s", d.ClientCredentials)
+
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+
 	var env *api.Environment = nil
 	var err error = nil
-	if d.deviceConfig.EnvironmentId == defaultEnvironmentId {
-		vm, err := api.GetVirtualMachine(d.client, d.deviceConfig.SourceVMId)
+	if d.DeviceConfig.EnvironmentId == defaultEnvironmentId {
+		vm, err := api.GetVirtualMachine(client, d.DeviceConfig.SourceVMId)
 		if err != nil {
 			return err
 		}
 
-		template, err := vm.GetTemplate(d.client)
+		template, err := vm.GetTemplate(client)
 		if err != nil {
 			return err
 		}
 		if template == nil {
-			return errors.New(fmt.Sprintf("Specified VM %s is not associated with a template", d.deviceConfig.SourceVMId))
+			return errors.New(fmt.Sprintf("Specified VM %s is not associated with a template", d.DeviceConfig.SourceVMId))
 		}
 
-		env, err = api.CreateNewEnvironment(d.client, template.Id)
+		env, err = api.CreateNewEnvironment(client, template.Id)
 		if err != nil {
 			return err
 		}
-		env, err = env.WaitUntilReady(d.client)
+		env, err = env.WaitUntilReady(client)
 		if err != nil {
 			return err
 		}
-
-		//TODO: Multiple networks?
-		if d.deviceConfig.VPNId != "" {
-			_, err := env.Networks[0].AttachToVpn(d.client, env.Id, d.deviceConfig.VPNId)
-			if err != nil {
-				return err
-			}
-			err = env.Networks[0].ConnectToVpn(d.client, env.Id, d.deviceConfig.VPNId)
-			if err != nil {
-				return err
-			}
-		}
-
 	} else {
-		env, err = api.GetEnvironment(d.client, d.deviceConfig.EnvironmentId)
+		env, err = api.GetEnvironment(client, d.DeviceConfig.EnvironmentId)
+		if err != nil {
+			return err
+		}
+		env, err = env.WaitUntilReady(client)
+		if err != nil {
+			return err
+		}
+		env, err = env.AddVirtualMachine(client, d.DeviceConfig.SourceVMId)
 		if err != nil {
 			return err
 		}
 	}
 
-	env, err = env.WaitUntilReady(d.client)
-	if err != nil {
-		return err
-	}
-
-	env, err = env.AddVirtualMachine(d.client, d.deviceConfig.SourceVMId)
-	if err != nil {
-		return err
-	}
-	env, err = env.WaitUntilReady(d.client)
-	if err != nil {
-		return err
+	//TODO: Multiple networks?
+	vpnId := d.DeviceConfig.VPNId
+	if vpnId != "" {
+		attached := false
+		for _, network := range env.Networks {
+			// Look to see if there is an attached VPN that we simply need to connect
+			for _, attachment := range network.VpnAttachments {
+				if attachment.Vpn.Id == vpnId {
+					attached = true
+					if !attachment.Connected {
+						if err = network.ConnectToVpn(client, env.Id, vpnId); err != nil {
+							return err
+						}
+					}
+					break
+				}
+			}
+		}
+		if !attached {
+			_, err := env.Networks[0].AttachToVpn(client, env.Id, vpnId)
+			if err != nil {
+				return err
+			}
+			if err = env.Networks[0].ConnectToVpn(client, env.Id, vpnId); err != nil {
+				return err
+			}
+		}
+		env, err = env.WaitUntilReady(client)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Just added a VM so pick the last one
-	vm, err := env.Vms[len(env.Vms)-1].Start(d.client)
+	vm, err := env.Vms[len(env.Vms)-1].Start(client)
 	if err != nil {
 		return err
 	}
-	vm.WaitUntilReady(d.client)
 
-	d.vm = vm
+	d.Vm = *vm
 	//TODO: What about multiple interfaces?
-	if d.deviceConfig.VPNId {
-		var correctNat api.VpnNatAddress = nil
+	if vpnId != defaultVPNId {
+		var correctNat api.VpnNatAddress
 		for _, a := range vm.Interfaces[0].NatAddresses.VpnNatAddresses {
-			if a.VpnId == d.deviceConfig.VPNId {
+			if a.VpnId == d.DeviceConfig.VPNId {
 				correctNat = a
 			}
 		}
-		if correctNat == nil {
+		if correctNat.IpAddress == "" {
 			return errors.New(fmt.Sprintf("Unable to find network NAT address for correct VPN in VM %s", vm.Id))
 		}
-		d.base.IPAddress = correctNat.IpAddress
+		d.IPAddress = correctNat.IpAddress
 	} else {
-		d.base.IPAddress = vm.Interfaces[0].Ip
+		d.IPAddress = vm.Interfaces[0].Ip
 	}
 
+	err = d.GenerateSshKeyAndCopy()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+ Generates a new SSH keypair, uses password auth to create the .ssh/authorized_keys file for later docker-machine access.
+ */
+func (d *Driver) GenerateSshKeyAndCopy() error {
+	d.SetLogLevel()
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+	creds, err := d.Vm.GetCredentials(client)
+	if err != nil {
+		return err
+	}
+	var foundCred *api.VmCredential
+	for _, c := range creds {
+		user, err := c.Username()
+		if err != nil {
+			return err
+		}
+		if user == d.SSHUser {
+			foundCred = &c
+			break
+		}
+	}
+	if foundCred == nil {
+		return fmt.Errorf("Virtual machine does not have credentials stored for specified SSH user %s", d.SSHUser)
+	}
+
+	password, err := foundCred.Password()
+	if err != nil {
+		return err
+	}
+
+	success := false
+	for i := 0; i < 5 && !success; i++ {
+		sleepTime := 10*time.Second
+		log.Infof("Sleeping for %s, so that SSH services can come up properly", sleepTime)
+		time.Sleep(sleepTime)
+
+		err = d.DoSshCopy(client, password)
+		if err != nil {
+			log.Warnf("Error attempting to connect to SSH, will retry %d times: %s", 5-i, err)
+		} else {
+			success = true
+		}
+	}
+	if !success {
+		log.Errorf("Unable to SSH to target machine to copy public key credentials after retries: %s", err)
+		return err
+	}
+	return nil
+}
+
+func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
+
+	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", d.IPAddress), &ssh.ClientConfig{
+		User: d.SSHUser,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	mkdirSession, err := sshClient.NewSession()
+	if err != nil {
+		return err
+	}
+	defer mkdirSession.Close()
+	err = mkdirSession.Run("mkdir -p ~/.ssh")
+	if err != nil {
+		return err
+	}
+
+	err = dockerSsh.GenerateSSHKey(d.GetSSHKeyPath())
+	if err != nil {
+		return err
+	}
+
+	scpSession, err := sshClient.NewSession()
+	if err != nil {
+		return err
+	}
+
+	pubKeyFile := d.GetSSHKeyPath() + ".pub"
+	destFile := ".ssh/authorized_keys"
+	err = scp.CopyPath(pubKeyFile, destFile, scpSession)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -190,27 +315,19 @@ func (d *Driver) DriverName() string {
 }
 
 func (d *Driver) GetIP() (string, error) {
-	return d.base.GetIP(), nil
+	if d.IPAddress == "" {
+		return "", errors.New("No IP address available in Skytap driver")
+	}
+	log.Debugf("IP Address: %s", d.IPAddress)
+	return d.IPAddress, nil
 }
 
 func (d *Driver) GetSSHHostname() (string, error) {
-	return d.base.GetIP(), nil
-}
-
-func (d *Driver) GetSSHKeyPath() string {
-	return d.base.GetSSHKeyPath()
-}
-
-func (d *Driver) GetSSHPort() (int, error) {
-	return d.base.GetSSHPort(), nil
-}
-
-func (d *Driver) GetSSHUsername() string {
-	return d.base.GetSSHUsername()
+	return d.GetIP()
 }
 
 func (d *Driver) GetMachineName() string {
-	return d.base.GetMachineName()
+	return d.MachineName
 }
 
 func (d *Driver) PreCreateCheck() error {
@@ -218,15 +335,41 @@ func (d *Driver) PreCreateCheck() error {
 }
 
 func (d *Driver) GetURL() (string, error) {
-	return fmt.Sprintf("tcp://%s:2376", d.GetIP()), nil
+	ip, err := d.GetIP()
+	if err != nil {
+		return "", err
+	} else {
+		return fmt.Sprintf("tcp://%s:2376", ip), err
+	}
 }
 
 func (d *Driver) GetState() (state.State, error) {
-	return state.Running, nil
+	d.SetLogLevel()
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+	vm, err := d.Vm.WaitUntilReady(client)
+	if err != nil {
+		return state.None, err
+	}
+	switch vm.Runstate {
+	case api.RunStateBusy:
+		return state.Error, errors.New("VM still in busy state")
+	case api.RunStateStop:
+		return state.Stopped, nil
+	case api.RunStateStart:
+		return state.Running, nil
+	case api.RunStatePause:
+		return state.Paused, nil
+	default:
+		return state.None, errors.New("Unhandled VM state: "+vm.Runstate)
+	}
 }
 
 func (d *Driver) Kill() error {
-	return fmt.Errorf("hosts without a driver cannot be killed")
+	d.SetLogLevel()
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+
+	_, err := d.Vm.Kill(client)
+	return err
 }
 
 func (d *Driver) Remove() error {
@@ -234,42 +377,69 @@ func (d *Driver) Remove() error {
 }
 
 func (d *Driver) Restart() error {
-	return fmt.Errorf("hosts without a driver cannot be restarted")
+	if err := d.Stop(); err != nil {
+		return err
+	}
+	return d.Start()
 }
 
 func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
-
 	user := flags.String("skytap-user-id")
 	key := flags.String("skytap-api-security-token")
-	d.client = api.NewSkytapClient(user, key)
+	d.ClientCredentials = api.SkytapCredentials{user, key}
 
-	d.base.SetSwarmConfigFromFlags(flags)
-	d.base.SSHUser = "root"
-	d.base.SSHPort = 22
+	d.SetSwarmConfigFromFlags(flags)
+	d.SSHUser = "root"
+	d.SSHPort = 22
 
-	d.deviceConfig = &deviceConfig{
+	envId := flags.String("skytap-env-id")
+	if envId == "" {
+		envId = defaultEnvironmentId
+	}
+	d.DeviceConfig = deviceConfig{
 		SourceVMId:    flags.String("skytap-vm-id"),
-		EnvironmentId: flags.String("skytap-env-id"),
+		EnvironmentId: envId,
 		VPNId:         flags.String("skytap-vpn-id"),
 	}
 
-	if err := validateDeviceConfig(d.deviceConfig); err != nil {
+	if err := validateDeviceConfig(d.DeviceConfig); err != nil {
 		return err
 	}
 
+	log.Info("Skytap driver configuration: %s", *d)
+	logLvlStr := flags.String("skytap-api-logging-level")
+	logLevel, err := logrus.ParseLevel(logLvlStr)
+	if err != nil {
+		log.Errorf("Unable to parse log level as specified '%s'", logLvlStr)
+	}
+	d.LogLevel = logLevel
+	d.SetLogLevel()
 	return nil
 }
 
 func validateDeviceConfig(deviceConfig deviceConfig) error {
+	if deviceConfig.SourceVMId == "" {
+		return errors.New("No source VPN specified")
+	}
 	return nil
 }
 
 func (d *Driver) Start() error {
-	_, err := d.vm.Start(d.client)
+	d.SetLogLevel()
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+
+	_, err := d.Vm.Start(client)
 	return err
 }
 
 func (d *Driver) Stop() error {
-	_, err := d.vm.Stop(d.client)
+	d.SetLogLevel()
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+
+	_, err := d.Vm.Stop(client)
 	return err
+}
+
+func (d *Driver) SetLogLevel() {
+	logrus.SetLevel(d.LogLevel)
 }
