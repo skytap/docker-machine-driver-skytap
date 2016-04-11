@@ -48,8 +48,16 @@ type SkytapClient struct {
  Create a new client from username and key.
  */
 func NewSkytapClient(username string, apiKey string) *SkytapClient {
-	return &SkytapClient{&http.Client{}, SkytapCredentials{username, apiKey}}
+	return NewSkytapClientFromCredentials(SkytapCredentials{username, apiKey})
 }
+
+/*
+ Create a new client from credentials
+ */
+func NewSkytapClientFromCredentials(credentials SkytapCredentials) *SkytapClient {
+	return &SkytapClient{&http.Client{}, credentials}
+}
+
 
 /*
  Request methods use this to create/customize the requests.

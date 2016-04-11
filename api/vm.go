@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dghubble/sling"
 	log "github.com/Sirupsen/logrus"
+	"strings"
 )
 
 const (
@@ -23,6 +24,11 @@ type VirtualMachine struct {
 	Interfaces     []*NetworkInterface `json:"interfaces`
 }
 
+type VmCredential struct {
+	Id string              `json:"id"`
+	Text string              `json:"text"`
+}
+
 // Paths for VMs.
 func vmIdInEnvironmentPath(envId string, vmId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId)
@@ -31,6 +37,8 @@ func vmIdInTemplatePath(templateId string, vmId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.json", TemplatePath, templateId, VmPath, vmId)
 }
 func vmIdPath(vmId string) string { return fmt.Sprintf("%s/%s", VmPath, vmId) }
+func vmCredentialPath(vmId string) string { return fmt.Sprintf("%s/%s/credentials.json", VmPath, vmId) }
+
 
 /*
  If VM is in a template, returns the template, otherwise nil.
@@ -128,6 +136,34 @@ func (vm *VirtualMachine) ChangeRunstate(client SkytapClient, runstate string, d
 		return vm, err
 	}
 	return vm.WaitUntilInState(client, []string{desiredRunstate})
+}
+
+func (vm *VirtualMachine) GetCredentials(client SkytapClient) ([]VmCredential, error) {
+	credentialReq := func(s *sling.Sling) *sling.Sling {
+		return s.Get(vmCredentialPath(vm.Id))
+	}
+
+	credentials := &[]VmCredential{}
+
+	_, err := RunSkytapRequest(client, false, credentials, credentialReq)
+	return *credentials, err
+}
+
+
+func (c *VmCredential) Username() (string, error) {
+	parts := strings.Split(c.Text, " / ")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("Incorrect parts in credential string '%s'", c.Text)
+	}
+	return parts[0], nil
+}
+
+func (c *VmCredential) Password() (string, error) {
+	parts := strings.Split(c.Text, " / ")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("Incorrect parts in credential string '%s'", c.Text)
+	}
+	return parts[1], nil
 }
 
 /*

@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"encoding/json"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"os"
 	"time"
+	"fmt"
 )
 
 type testConfig struct {
@@ -112,6 +112,28 @@ func TestAddDeleteVirtualMachine(t *testing.T) {
 	for _, value := range env5.Vms {
 		require.Equal(t, "Ubuntu Server 14.04 - 64-bit", value.Name)
 	}
+}
+
+func TestVmCredentials(t *testing.T) {
+	client := skytapClient(t)
+	c := getTestConfig(t)
+
+	env, err := CreateNewEnvironment(client, c.TemplateId)
+	require.NoError(t, err, "Error creating environment")
+
+	defer DeleteEnvironment(client, env.Id)
+
+	creds, err := env.Vms[0].GetCredentials(client)
+	require.NoError(t, err, "Error getting VM credentials")
+
+	user, err := creds[0].Username()
+	require.NoError(t, err, "Error username")
+	require.Equal(t, "root", user)
+
+	pass, err := creds[0].Password()
+	require.NoError(t, err, "Error getting password")
+	require.Equal(t, "ChangeMe!", pass)
+
 }
 
 func TestManipulateVmRunstate(t *testing.T) {
