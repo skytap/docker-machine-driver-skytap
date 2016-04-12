@@ -134,6 +134,7 @@ func (d *Driver) Create() error {
 		if err != nil {
 			return err
 		}
+		d.DeviceConfig.EnvironmentId = env.Id
 		env, err = env.WaitUntilReady(client)
 		if err != nil {
 			return err
@@ -219,7 +220,7 @@ func (d *Driver) Create() error {
 
 /*
  Generates a new SSH keypair, uses password auth to create the .ssh/authorized_keys file for later docker-machine access.
- */
+*/
 func (d *Driver) GenerateSshKeyAndCopy() error {
 	d.SetLogLevel()
 	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
@@ -249,7 +250,7 @@ func (d *Driver) GenerateSshKeyAndCopy() error {
 
 	success := false
 	for i := 0; i < 5 && !success; i++ {
-		sleepTime := 10*time.Second
+		sleepTime := 10 * time.Second
 		log.Infof("Sleeping for %s, so that SSH services can come up properly", sleepTime)
 		time.Sleep(sleepTime)
 
@@ -280,18 +281,11 @@ func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
 		return err
 	}
 
-	mkdirSession, err := sshClient.NewSession()
-	if err != nil {
-		return err
-	}
-	defer mkdirSession.Close()
-	err = mkdirSession.Run("mkdir -p ~/.ssh")
-	if err != nil {
+	if err = runRemoteBashCommand(sshClient, "mkdir -p ~/.ssh"); err != nil {
 		return err
 	}
 
-	err = dockerSsh.GenerateSSHKey(d.GetSSHKeyPath())
-	if err != nil {
+	if err = dockerSsh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
 		return err
 	}
 
@@ -301,12 +295,26 @@ func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
 	}
 
 	pubKeyFile := d.GetSSHKeyPath() + ".pub"
-	destFile := ".ssh/authorized_keys"
-	err = scp.CopyPath(pubKeyFile, destFile, scpSession)
+	destFile := "docker-machine-id_rsa.pub"
+	if err = scp.CopyPath(pubKeyFile, destFile, scpSession); err != nil {
+		return err
+	}
+
+	if err = runRemoteBashCommand(sshClient, fmt.Sprintf("cat %s >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys", destFile)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runRemoteBashCommand(sshClient *ssh.Client, cmd string) error {
+	session, err := sshClient.NewSession()
 	if err != nil {
 		return err
 	}
-	return nil
+	defer session.Close()
+	err = session.Run(cmd)
+	return err
 }
 
 // DriverName returns the name of the driver
@@ -360,7 +368,7 @@ func (d *Driver) GetState() (state.State, error) {
 	case api.RunStatePause:
 		return state.Paused, nil
 	default:
-		return state.None, errors.New("Unhandled VM state: "+vm.Runstate)
+		return state.None, errors.New("Unhandled VM state: " + vm.Runstate)
 	}
 }
 
@@ -373,7 +381,10 @@ func (d *Driver) Kill() error {
 }
 
 func (d *Driver) Remove() error {
-	return nil
+	d.SetLogLevel()
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+	err := api.DeleteVirtualMachine(client, d.Vm.Id)
+	return err
 }
 
 func (d *Driver) Restart() error {
@@ -389,8 +400,8 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	d.ClientCredentials = api.SkytapCredentials{user, key}
 
 	d.SetSwarmConfigFromFlags(flags)
-	d.SSHUser = "root"
-	d.SSHPort = 22
+	d.SSHUser = flags.String("skytap-ssh-user")
+	d.SSHPort = flags.Int("skytap-ssh-port")
 
 	envId := flags.String("skytap-env-id")
 	if envId == "" {
