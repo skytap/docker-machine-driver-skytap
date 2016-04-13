@@ -270,7 +270,7 @@ func (d *Driver) GenerateSshKeyAndCopy() error {
 
 func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
 
-	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", d.IPAddress, d.SSHPort), &ssh.ClientConfig{
+	sshClient, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", d.IPAddress, d.SSHPort), &ssh.ClientConfig{
 		User: d.SSHUser,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(password),
