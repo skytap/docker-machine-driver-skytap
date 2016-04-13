@@ -31,6 +31,7 @@ type Driver struct {
 	DeviceConfig      deviceConfig
 	Vm                api.VirtualMachine
 	LogLevel          logrus.Level
+	LastState         state.State
 }
 
 type deviceConfig struct {
@@ -45,6 +46,7 @@ func NewDriver(hostName, storePath string) drivers.Driver {
 		DeviceConfig:      deviceConfig{},
 		Vm:                api.VirtualMachine{},
 		LogLevel:          logrus.WarnLevel,
+		LastState: state.None,
 		BaseDriver: &drivers.BaseDriver{
 			MachineName: hostName,
 			StorePath:   storePath,
@@ -343,11 +345,17 @@ func (d *Driver) PreCreateCheck() error {
 }
 
 func (d *Driver) GetURL() (string, error) {
-	ip, err := d.GetIP()
-	if err != nil {
-		return "", err
+	// Driver code will only get current state if we return a blank string here, so
+	// only return a valid URL if we believe we are running
+	if d.LastState == state.Running {
+		ip, err := d.GetIP()
+		if err != nil {
+			return "", err
+		} else {
+			return fmt.Sprintf("tcp://%s:2376", ip), err
+		}
 	} else {
-		return fmt.Sprintf("tcp://%s:2376", ip), err
+		return "", nil
 	}
 }
 
@@ -360,14 +368,19 @@ func (d *Driver) GetState() (state.State, error) {
 	}
 	switch vm.Runstate {
 	case api.RunStateBusy:
+		d.LastState = state.Error
 		return state.Error, errors.New("VM still in busy state")
 	case api.RunStateStop:
+		d.LastState = state.Stopped
 		return state.Stopped, nil
 	case api.RunStateStart:
+		d.LastState = state.Running
 		return state.Running, nil
 	case api.RunStatePause:
+		d.LastState = state.Paused
 		return state.Paused, nil
 	default:
+		d.LastState = state.None
 		return state.None, errors.New("Unhandled VM state: " + vm.Runstate)
 	}
 }
@@ -439,15 +452,27 @@ func (d *Driver) Start() error {
 	d.SetLogLevel()
 	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
 
+	d.LastState = state.Starting
 	_, err := d.Vm.Start(client)
-	return err
+	if err != nil {
+		d.LastState = state.Error
+		return err
+	}
+	d.LastState = state.Running
+
+	return nil
 }
 
 func (d *Driver) Stop() error {
 	d.SetLogLevel()
 	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
-
+	d.LastState = state.Stopping
 	_, err := d.Vm.Stop(client)
+	if err != nil {
+		d.LastState = state.Error
+		return err
+	}
+	d.LastState = state.Stopped
 	return err
 }
 
