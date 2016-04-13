@@ -430,7 +430,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		return err
 	}
 
-	log.Info("Skytap driver configuration: %s", *d)
+	log.Debugf("Skytap driver configuration: %+v", d)
 	logLvlStr := flags.String("skytap-api-logging-level")
 	logLevel, err := logrus.ParseLevel(logLvlStr)
 	if err != nil {
