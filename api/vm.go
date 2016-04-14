@@ -175,19 +175,19 @@ func (vm *VirtualMachine) RenameNetworkInterface(client SkytapClient, envId stri
 }
 
 func (c *VmCredential) Username() (string, error) {
-	parts := strings.Split(c.Text, " / ")
+	parts := strings.Split(c.Text, "/")
 	if len(parts) != 2 {
 		return "", fmt.Errorf("Incorrect parts in credential string '%s'", c.Text)
 	}
-	return parts[0], nil
+	return strings.TrimSpace(parts[0]), nil
 }
 
 func (c *VmCredential) Password() (string, error) {
-	parts := strings.Split(c.Text, " / ")
+	parts := strings.Split(c.Text, "/")
 	if len(parts) != 2 {
 		return "", fmt.Errorf("Incorrect parts in credential string '%s'", c.Text)
 	}
-	return parts[1], nil
+	return strings.TrimSpace(parts[1]), nil
 }
 
 /*
