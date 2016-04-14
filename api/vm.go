@@ -29,6 +29,10 @@ type VmCredential struct {
 	Text string              `json:"text"`
 }
 
+type NameUpdate struct {
+	Hostname string `json:"hostname"`
+}
+
 // Paths for VMs.
 func vmIdInEnvironmentPath(envId string, vmId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId)
@@ -38,7 +42,7 @@ func vmIdInTemplatePath(templateId string, vmId string) string {
 }
 func vmIdPath(vmId string) string { return fmt.Sprintf("%s/%s", VmPath, vmId) }
 func vmCredentialPath(vmId string) string { return fmt.Sprintf("%s/%s/credentials.json", VmPath, vmId) }
-
+func networkInterfacePath(envId string, vmId string, interfaceId string) string { return fmt.Sprintf("%s/%s/%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId, InterfacePath, interfaceId) }
 
 /*
  If VM is in a template, returns the template, otherwise nil.
@@ -158,6 +162,16 @@ func (vm *VirtualMachine) GetCredentials(client SkytapClient) ([]VmCredential, e
 	return *credentials, err
 }
 
+func (vm *VirtualMachine) RenameNetworkInterface(client SkytapClient, envId string, interfaceId string, name string) (*NetworkInterface, error) {
+	nameReq := func(s *sling.Sling) *sling.Sling {
+		return s.Put(networkInterfacePath(envId, vm.Id, interfaceId)).BodyJSON(&NameUpdate{Hostname: name})
+	}
+
+	interfaceResp := &NetworkInterface{}
+
+	_, err := RunSkytapRequest(client, false, interfaceResp, nameReq)
+	return interfaceResp, err
+}
 
 func (c *VmCredential) Username() (string, error) {
 	parts := strings.Split(c.Text, " / ")

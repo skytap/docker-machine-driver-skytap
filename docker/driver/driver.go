@@ -190,6 +190,13 @@ func (d *Driver) Create() error {
 	}
 
 	vm := env.Vms[len(env.Vms)-1]
+
+	// Rename interface to match name of machine from docker-machine's perspective.
+	_, err = vm.RenameNetworkInterface(client, env.Id, vm.Interfaces[0].Id, d.MachineName)
+	if err != nil {
+		return err
+	}
+
 	// Just added a VM so pick the last one
 	started, err := vm.Start(client)
 	if err != nil {

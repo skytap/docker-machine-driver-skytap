@@ -172,6 +172,29 @@ func TestManipulateVmRunstate(t *testing.T) {
 
 }
 
+func TestChangeNetworkHostname(t *testing.T) {
+	client := skytapClient(t)
+	c := getTestConfig(t)
+
+	env, err := CreateNewEnvironment(client, c.TemplateId)
+	defer DeleteEnvironment(client, env.Id)
+	require.NoError(t, err, "Error creating environment")
+
+	vm, err := GetVirtualMachine(client, env.Vms[0].Id)
+	require.NoError(t, err, "Error creating vm")
+
+	testName := "newname1234"
+	renamed, err := vm.RenameNetworkInterface(client, env.Id, vm.Interfaces[0].Id, testName)
+	require.NoError(t, err, "Error renaming interface")
+	require.Equal(t, testName, renamed.Hostname)
+
+	vm, err = GetVirtualMachine(client, vm.Id)
+	require.NoError(t, err, "Error refreshing VM")
+	require.Equal(t, testName, vm.Interfaces[0].Hostname)
+
+
+}
+
 func TestAttachVpn(t *testing.T) {
 	client := skytapClient(t)
 	c := getTestConfig(t)

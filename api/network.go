@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	NetworkPath = "networks"
-	VpnPath     = "vpns"
+	NetworkPath   = "networks"
+	InterfacePath = "interfaces"
+	VpnPath       = "vpns"
 )
 
 /*
@@ -41,6 +42,7 @@ type NetworkInterface struct {
 	Id              string       `json:"id"`
 	Ip              string       `json:"ip"`
 	PublicIpsCount  int          `json:"public_ips_count"`
+	Hostname        string       `json:"hostname"`
 	PublicIps       []PublicIp   `json:"public_ips"`
 	NatAddresses    NatAddresses `json:"nat_addresses"`
 	Status          string       `json:"status"`
