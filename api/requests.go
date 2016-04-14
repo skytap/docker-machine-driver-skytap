@@ -191,7 +191,7 @@ func runSkytapRequestWithRetry(client SkytapClient, useV2 bool, respObj interfac
 			if skytapError.Error != "" {
 				returnError = errors.New(skytapError.Error)
 			} else if err == nil {
-				returnError = errors.New("Received error status code calling SkyTap API")
+				returnError = fmt.Errorf("Received error status code calling SkyTap API, but no additional error info: %s", resp.Status)
 				logRequestResponse(req, resp, respObj, returnError)
 			}
 		}
