@@ -189,27 +189,22 @@ func (d *Driver) Create() error {
 		}
 	}
 
+	vm := env.Vms[len(env.Vms)-1]
 	// Just added a VM so pick the last one
-	vm, err := env.Vms[len(env.Vms)-1].Start(client)
+	started, err := vm.Start(client)
 	if err != nil {
 		return err
 	}
 
-	d.Vm = *vm
-	//TODO: What about multiple interfaces?
-	if vpnId != defaultVPNId {
-		var correctNat api.VpnNatAddress
-		for _, a := range vm.Interfaces[0].NatAddresses.VpnNatAddresses {
-			if a.VpnId == d.DeviceConfig.VPNId {
-				correctNat = a
-			}
-		}
-		if correctNat.IpAddress == "" {
-			return errors.New(fmt.Sprintf("Unable to find network NAT address for correct VPN in VM %s", vm.Id))
-		}
-		d.IPAddress = correctNat.IpAddress
-	} else {
-		d.IPAddress = vm.Interfaces[0].Ip
+	renamed, err := started.WaitUntilReady(client)
+	if err != nil {
+		return err
+	}
+
+	d.Vm = *renamed
+
+	if err = d.refreshIpAddress(); err != nil {
+		return err
 	}
 
 	err = d.GenerateSshKeyAndCopy()
@@ -217,6 +212,35 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	return nil
+}
+
+func (d *Driver) refreshVm() error {
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+	vm, err := api.GetVirtualMachine(client, d.Vm.Id)
+	if err != nil {
+		return err
+	}
+	d.Vm = *vm
+	return nil
+}
+
+func (d *Driver) refreshIpAddress() error {
+	//TODO: What about multiple interfaces?
+	if d.DeviceConfig.VPNId != defaultVPNId {
+		var correctNat api.VpnNatAddress
+		for _, a := range d.Vm.Interfaces[0].NatAddresses.VpnNatAddresses {
+			if a.VpnId == d.DeviceConfig.VPNId {
+				correctNat = a
+			}
+		}
+		if correctNat.IpAddress == "" {
+			return errors.New(fmt.Sprintf("Unable to find network NAT address for correct VPN in VM %s", d.Vm.Id))
+		}
+		d.IPAddress = correctNat.IpAddress
+	} else {
+		d.IPAddress = d.Vm.Interfaces[0].Ip
+	}
 	return nil
 }
 
@@ -348,11 +372,17 @@ func (d *Driver) GetURL() (string, error) {
 	// Driver code will only get current state if we return a blank string here, so
 	// only return a valid URL if we believe we are running
 	if d.LastState == state.Running {
+		d.SetLogLevel()
+		d.refreshVm()
+		d.refreshIpAddress()
 		ip, err := d.GetIP()
 		if err != nil {
 			return "", err
+		}
+		if d.Vm.Runstate == api.RunStateStart {
+			return fmt.Sprintf("tcp://%s:2376", ip), nil
 		} else {
-			return fmt.Sprintf("tcp://%s:2376", ip), err
+			return "", nil
 		}
 	} else {
 		return "", nil
@@ -362,14 +392,14 @@ func (d *Driver) GetURL() (string, error) {
 func (d *Driver) GetState() (state.State, error) {
 	d.SetLogLevel()
 	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
-	vm, err := d.Vm.WaitUntilReady(client)
+	vm, err := api.GetVirtualMachine(client, d.Vm.Id)
 	if err != nil {
 		return state.None, err
 	}
 	switch vm.Runstate {
 	case api.RunStateBusy:
-		d.LastState = state.Error
-		return state.Error, errors.New("VM still in busy state")
+		d.LastState = state.None
+		return state.None, errors.New("VM is busy, wait and try again")
 	case api.RunStateStop:
 		d.LastState = state.Stopped
 		return state.Stopped, nil

@@ -78,7 +78,7 @@ func (vm *VirtualMachine) RunstateStr() string { return vm.Runstate }
  Waits until VM is either stopped or started.
  */
 func (vm *VirtualMachine) WaitUntilReady(client SkytapClient) (*VirtualMachine, error) {
-	return vm.WaitUntilInState(client, []string{RunStateStop, RunStateStart})
+	return vm.WaitUntilInState(client, []string{RunStateStop, RunStateStart, RunStatePause})
 }
 
 /*
@@ -88,6 +88,15 @@ func (vm *VirtualMachine) WaitUntilInState(client SkytapClient, desiredStates []
 	r, err := WaitUntilInState(client, desiredStates, vm)
 	v := r.(*VirtualMachine)
 	return v, err
+}
+
+/*
+ Suspends a VM.
+ */
+func (vm *VirtualMachine) Suspend(client SkytapClient) (*VirtualMachine, error) {
+	log.WithFields(log.Fields{"vmId": vm.Id}).Info("Starting VM")
+
+	return vm.ChangeRunstate(client, RunStateStart, RunStateStart)
 }
 
 /*
