@@ -169,6 +169,7 @@ func (vm *VirtualMachine) RenameNetworkInterface(client SkytapClient, envId stri
 
 	interfaceResp := &NetworkInterface{}
 
+	log.WithFields(log.Fields{"newName": name, "interfaceId": interfaceId, "envId": envId, "vmId": vm.Id}).Infof("Renaming interface")
 	_, err := RunSkytapRequest(client, false, interfaceResp, nameReq)
 	return interfaceResp, err
 }
