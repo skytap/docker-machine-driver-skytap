@@ -14,6 +14,7 @@ import (
 	"github.com/tmc/scp"
 	"golang.org/x/crypto/ssh"
 	"time"
+	"regexp"
 )
 
 const (
@@ -475,6 +476,12 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	}
 	d.LogLevel = logLevel
 	d.SetLogLevel()
+
+	var validHostname = regexp.MustCompile(`^[a-z0-9\-]+$`)
+	if !validHostname.MatchString(d.MachineName) {
+		return fmt.Errorf("Invalid machine name '%s', must match regex ^[a-z0-9\\-]+$ in order to allow VM hostname to match machine name", d.MachineName)
+	}
+
 	return nil
 }
 
