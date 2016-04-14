@@ -112,7 +112,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 func (d *Driver) Create() error {
 	d.SetLogLevel()
 	log.Info("Creating docker machine in Skytap")
-	log.Debug("Skytap client auth: %s", d.ClientCredentials)
+	log.Debugf("Skytap client auth: %+v", d.ClientCredentials)
 
 	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
 
