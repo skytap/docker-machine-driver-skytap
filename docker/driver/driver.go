@@ -312,29 +312,35 @@ func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
 	})
 
 	if err != nil {
+		log.Errorf("Error connecting with password credentials: %s", err)
 		return err
 	}
 
 	if err = runRemoteBashCommand(sshClient, "mkdir -p ~/.ssh"); err != nil {
+		log.Errorf("Error ensuring existence of ~/.ssh directory: %s", err)
 		return err
 	}
 
 	if err = dockerSsh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
+		log.Errorf("Error generating keypair locally: %s", err)
 		return err
 	}
 
 	scpSession, err := sshClient.NewSession()
 	if err != nil {
+		log.Errorf("Error creating ssh copy session: %s", err)
 		return err
 	}
 
 	pubKeyFile := d.GetSSHKeyPath() + ".pub"
 	destFile := "docker-machine-id_rsa.pub"
 	if err = scp.CopyPath(pubKeyFile, destFile, scpSession); err != nil {
+		log.Errorf("Error performing scp of public keyfile: %s", err)
 		return err
 	}
 
 	if err = runRemoteBashCommand(sshClient, fmt.Sprintf("cat %s >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys", destFile)); err != nil {
+		log.Errorf("Error adding public key to ~/.ssh/authorized_keys: %s", err)
 		return err
 	}
 
