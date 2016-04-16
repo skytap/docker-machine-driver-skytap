@@ -94,12 +94,14 @@ func WaitUntilInState(client SkytapClient, desiredStates []string, r RunstateAwa
 	if err != nil {
 		return current, err
 	}
-	for i := 0; i < 10 && !stringInSlice(current.RunstateStr(), desiredStates); i++ {
+	maxBusyWaitPeriods := 20
+	waitPeriod := 10 * time.Second
+	for i := 0; i < maxBusyWaitPeriods && !stringInSlice(current.RunstateStr(), desiredStates); i++ {
 		current, err = r.Refresh(client)
 		if err != nil {
 			return current, err
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(waitPeriod)
 	}
 	if !stringInSlice(current.RunstateStr(), desiredStates) {
 		return current, errors.New(fmt.Sprintf("Didn't achieve any desired runstate in %s after %d seconds, resource is in runstate %s", desiredStates, time.Now().Unix()-start.Unix(), current.RunstateStr()))
