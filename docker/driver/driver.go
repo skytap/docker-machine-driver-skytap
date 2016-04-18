@@ -356,7 +356,7 @@ func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
 		return err
 	}
 
-	if err = runRemoteBashCommand(sshClient, fmt.Sprintf("cat %s >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys", destFile)); err != nil {
+	if err = runRemoteBashCommand(sshClient, fmt.Sprintf("chmod 700 ~/.ssh; cat %s >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys", destFile)); err != nil {
 		log.Errorf("Error adding public key to ~/.ssh/authorized_keys: %s", err)
 		return err
 	}
