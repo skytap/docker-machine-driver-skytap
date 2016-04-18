@@ -5,11 +5,11 @@ import (
 	"testing"
 
 	"encoding/json"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"os"
 	"time"
-	"fmt"
 )
 
 type testConfig struct {
@@ -65,14 +65,26 @@ func TestCreateEnvironment(t *testing.T) {
 	c := getTestConfig(t)
 
 	env, err := CreateNewEnvironment(client, c.TemplateId)
+	defer DeleteEnvironment(client, env.Id)
 	require.NoError(t, err, "Error creating environment")
 
 	err = getEnvironment(t, client, env.Id)
 	require.NoError(t, err, "Error retrieving environment")
 
-	err = DeleteEnvironment(client, env.Id)
+	env2, err := CreateNewEnvironmentWithVms(client, c.TemplateId, []string{c.VmId})
+	env2, err = env2.WaitUntilReady(client)
+	require.NoError(t, err, "Error creating environment with specific VMs")
+	require.Equal(t, 1, len(env2.Vms), "Should only have 1 VM")
+	require.Equal(t, env.Vms[0].Name, env2.Vms[0].Name, "Should match the requested VM name")
+	err = DeleteEnvironment(client, env2.Id)
 	require.NoError(t, err, "Error deleting environment")
 
+	env3, err := CopyEnvironmentWithVms(client, env.Id, []string{env.Vms[0].Id})
+	defer DeleteEnvironment(client, env3.Id)
+	env3, err = env3.WaitUntilReady(client)
+	require.NoError(t, err, "Error creating environment with specific VMs")
+	require.Equal(t, 1, len(env3.Vms), "Should only have 1 VM")
+	require.Equal(t, env.Vms[0].Name, env3.Vms[0].Name, "Should match the requested VM name")
 }
 
 func TestAddDeleteVirtualMachine(t *testing.T) {
@@ -93,8 +105,12 @@ func TestAddDeleteVirtualMachine(t *testing.T) {
 	sourceEnv, err := CreateNewEnvironment(client, c.TemplateId)
 	defer DeleteEnvironment(client, sourceEnv.Id)
 	require.NoError(t, err, "Error creating second environment")
+	sourceEnv, err = sourceEnv.WaitUntilReady(client)
+	require.NoError(t, err, "Error creating second environment")
+	_, err = sourceEnv.Vms[0].WaitUntilReady(client)
+	require.NoError(t, err, "Error creating second environment")
 
-	env3, err := env.AddVirtualMachine(client, sourceEnv.Vms[0].Id)
+	env3, err := env2.AddVirtualMachine(client, sourceEnv.Vms[0].Id)
 	require.NoError(t, err, "Error adding vm from template")
 	require.Equal(t, len(env2.Vms)+1, len(env3.Vms))
 
@@ -191,7 +207,6 @@ func TestChangeNetworkHostname(t *testing.T) {
 	vm, err = GetVirtualMachine(client, vm.Id)
 	require.NoError(t, err, "Error refreshing VM")
 	require.Equal(t, testName, vm.Interfaces[0].Hostname)
-
 
 }
 

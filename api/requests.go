@@ -23,14 +23,14 @@ const (
 
 /*
  General skytap json error response.
- */
+*/
 type SkytapApiError struct {
 	Error string `json:error`
 }
 
 /*
  Credentials for accessing skytap REST API.
- */
+*/
 type SkytapCredentials struct {
 	Username string
 	ApiKey   string
@@ -38,7 +38,7 @@ type SkytapCredentials struct {
 
 /*
  Skytap client object, needed for all REST calls.
- */
+*/
 type SkytapClient struct {
 	HttpClient  *http.Client
 	Credentials SkytapCredentials
@@ -46,34 +46,33 @@ type SkytapClient struct {
 
 /*
  Create a new client from username and key.
- */
+*/
 func NewSkytapClient(username string, apiKey string) *SkytapClient {
 	return NewSkytapClientFromCredentials(SkytapCredentials{username, apiKey})
 }
 
 /*
  Create a new client from credentials
- */
+*/
 func NewSkytapClientFromCredentials(credentials SkytapCredentials) *SkytapClient {
 	return &SkytapClient{&http.Client{}, credentials}
 }
 
-
 /*
  Request methods use this to create/customize the requests.
- */
+*/
 type SlingDecorator func(*sling.Sling) *sling.Sling
 
 /*
  Some skytap resources have a runstate in response, use this for monitoring.
- */
+*/
 type RunstateBody struct {
 	Runstate string `json:"runstate"`
 }
 
 /*
  A runstate aware resource has a runstate in its representation, which can be used when waiting for a specific state.
- */
+*/
 type RunstateAwareResource interface {
 	//
 	RunstateStr() string
@@ -86,34 +85,34 @@ type RunstateAwareResource interface {
 
  If the resource reaches the desired state, a recently fetched representation is returned. Otherwise an error is returned, along
  with the result of the last attempt.
- */
-func WaitUntilInState(client SkytapClient, desiredStates []string, r RunstateAwareResource) (RunstateAwareResource, error) {
+
+ If requireStateChange is set, a transition must occur. The function will wait until the state changes or timeout.
+*/
+func WaitUntilInState(client SkytapClient, desiredStates []string, r RunstateAwareResource, requireStateChange bool) (RunstateAwareResource, error) {
 	log.WithFields(log.Fields{"desiredStates": desiredStates, "resource": r}).Info("Waiting until resource is in desired state")
 	start := time.Now()
+
 	current, err := r.Refresh(client)
 	if err != nil {
 		return current, err
 	}
+
+	hasChanged := !requireStateChange || current.RunstateStr() != r.RunstateStr()
+
 	maxBusyWaitPeriods := 20
 	waitPeriod := 10 * time.Second
-	for i := 0; i < maxBusyWaitPeriods && !stringInSlice(current.RunstateStr(), desiredStates); i++ {
+	for i := 0; i < maxBusyWaitPeriods && !(hasChanged && stringInSlice(current.RunstateStr(), desiredStates)); i++ {
+		time.Sleep(waitPeriod)
 		current, err = r.Refresh(client)
 		if err != nil {
 			return current, err
 		}
-		time.Sleep(waitPeriod)
+		hasChanged = hasChanged || current.RunstateStr() != r.RunstateStr()
 	}
 	if !stringInSlice(current.RunstateStr(), desiredStates) {
 		return current, errors.New(fmt.Sprintf("Didn't achieve any desired runstate in %s after %d seconds, resource is in runstate %s", desiredStates, time.Now().Unix()-start.Unix(), current.RunstateStr()))
 	}
 	return current, err
-}
-
-/*
- Wait until the resource is ready.
- */
-func WaitUntilReady(client SkytapClient, r RunstateAwareResource) (RunstateAwareResource, error) {
-	return WaitUntilInState(client, []string{RunStateStop, RunStateStart}, r)
 }
 
 /*
@@ -124,14 +123,14 @@ func WaitUntilReady(client SkytapClient, r RunstateAwareResource) (RunstateAware
  useV2 - If true the request should use V2 API path.
  respJson - Interface to fill with response JSON.
  slingDecorator - Decorate request with specifics, set request path relative to root, add body, etc.
- */
+*/
 func RunSkytapRequest(client SkytapClient, useV2 bool, respJson interface{}, slingDecorator SlingDecorator) (*http.Response, error) {
 	return runSkytapRequestWithRetry(client, useV2, respJson, slingDecorator, 0)
 }
 
 /*
  Return a skytap resource specified as complete GET based URL.
- */
+*/
 func GetSkytapResource(client SkytapClient, url string, respObj interface{}) (*http.Response, error) {
 	fromUrl := func(s *sling.Sling) *sling.Sling {
 		return s.New().Base(url)
@@ -142,7 +141,7 @@ func GetSkytapResource(client SkytapClient, url string, respObj interface{}) (*h
 /*
   Runs a skytap API request attempt, retry number as specified by retryNum.
 
- */
+*/
 func runSkytapRequestWithRetry(client SkytapClient, useV2 bool, respObj interface{}, slingDecorator SlingDecorator, retryNum int) (*http.Response, error) {
 	baseUrl := BaseUriV1
 	if useV2 {

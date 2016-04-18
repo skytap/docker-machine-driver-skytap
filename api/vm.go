@@ -2,8 +2,8 @@ package api
 
 import (
 	"fmt"
-	"github.com/dghubble/sling"
 	log "github.com/Sirupsen/logrus"
+	"github.com/dghubble/sling"
 	"strings"
 )
 
@@ -13,7 +13,7 @@ const (
 
 /*
  Skytap VM resource.
- */
+*/
 type VirtualMachine struct {
 	Id             string              `json:"id"`
 	Name           string              `json:"name"`
@@ -25,8 +25,8 @@ type VirtualMachine struct {
 }
 
 type VmCredential struct {
-	Id string              `json:"id"`
-	Text string              `json:"text"`
+	Id   string `json:"id"`
+	Text string `json:"text"`
 }
 
 type NameUpdate struct {
@@ -40,13 +40,15 @@ func vmIdInEnvironmentPath(envId string, vmId string) string {
 func vmIdInTemplatePath(templateId string, vmId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.json", TemplatePath, templateId, VmPath, vmId)
 }
-func vmIdPath(vmId string) string { return fmt.Sprintf("%s/%s", VmPath, vmId) }
+func vmIdPath(vmId string) string         { return fmt.Sprintf("%s/%s", VmPath, vmId) }
 func vmCredentialPath(vmId string) string { return fmt.Sprintf("%s/%s/credentials.json", VmPath, vmId) }
-func networkInterfacePath(envId string, vmId string, interfaceId string) string { return fmt.Sprintf("%s/%s/%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId, InterfacePath, interfaceId) }
+func networkInterfacePath(envId string, vmId string, interfaceId string) string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId, InterfacePath, interfaceId)
+}
 
 /*
  If VM is in a template, returns the template, otherwise nil.
- */
+*/
 func (vm *VirtualMachine) GetTemplate(client SkytapClient) (*Template, error) {
 	if vm.TemplateUrl == "" {
 		return nil, nil
@@ -58,7 +60,7 @@ func (vm *VirtualMachine) GetTemplate(client SkytapClient) (*Template, error) {
 
 /*
  If a VM is in an environment, returns the environment, otherwise nil.
- */
+*/
 func (vm *VirtualMachine) GetEnvironment(client SkytapClient) (*Environment, error) {
 	if vm.EnvironmentUrl == "" {
 		return nil, nil
@@ -70,33 +72,32 @@ func (vm *VirtualMachine) GetEnvironment(client SkytapClient) (*Environment, err
 
 /*
  Fetch fresh representation.
- */
+*/
 func (vm *VirtualMachine) Refresh(client SkytapClient) (RunstateAwareResource, error) {
 	return GetVirtualMachine(client, vm.Id)
 }
 
 func (vm *VirtualMachine) RunstateStr() string { return vm.Runstate }
 
-
 /*
  Waits until VM is either stopped or started.
- */
+*/
 func (vm *VirtualMachine) WaitUntilReady(client SkytapClient) (*VirtualMachine, error) {
-	return vm.WaitUntilInState(client, []string{RunStateStop, RunStateStart, RunStatePause})
+	return vm.WaitUntilInState(client, []string{RunStateStop, RunStateStart, RunStatePause}, false)
 }
 
 /*
   Wait until the VM is in one of the desired states.
- */
-func (vm *VirtualMachine) WaitUntilInState(client SkytapClient, desiredStates []string) (*VirtualMachine, error) {
-	r, err := WaitUntilInState(client, desiredStates, vm)
+*/
+func (vm *VirtualMachine) WaitUntilInState(client SkytapClient, desiredStates []string, requireStateChange bool) (*VirtualMachine, error) {
+	r, err := WaitUntilInState(client, desiredStates, vm, requireStateChange)
 	v := r.(*VirtualMachine)
 	return v, err
 }
 
 /*
  Suspends a VM.
- */
+*/
 func (vm *VirtualMachine) Suspend(client SkytapClient) (*VirtualMachine, error) {
 	log.WithFields(log.Fields{"vmId": vm.Id}).Info("Starting VM")
 
@@ -105,7 +106,7 @@ func (vm *VirtualMachine) Suspend(client SkytapClient) (*VirtualMachine, error) 
 
 /*
  Starts a VM.
- */
+*/
 func (vm *VirtualMachine) Start(client SkytapClient) (*VirtualMachine, error) {
 	log.WithFields(log.Fields{"vmId": vm.Id}).Info("Starting VM")
 
@@ -114,16 +115,28 @@ func (vm *VirtualMachine) Start(client SkytapClient) (*VirtualMachine, error) {
 
 /*
  Stops a VM. Note that some VMs may require user input and cannot be stopped with the method.
- */
+*/
 func (vm *VirtualMachine) Stop(client SkytapClient) (*VirtualMachine, error) {
 	log.WithFields(log.Fields{"vmId": vm.Id}).Info("Stopping VM")
 
-	return vm.ChangeRunstate(client, RunStateStop, RunStateStop)
+	newVm, err := vm.ChangeRunstate(client, RunStateStop, RunStateStop, RunStateStart)
+	if err != nil {
+		return newVm, err
+	}
+	switch newVm.Error {
+	case false:
+		return newVm, err
+	case "Shutdown cannot proceed. Please check your VM for open dialog windows.":
+		log.WithFields(log.Fields{"vmId": vm.Id, "error": newVm.Error, "state": newVm.RunstateStr()}).Warn("Unable to gracefully stop VM, will attempt to kill VM forcefully")
+		return vm.Kill(client)
+	default:
+		return nil, fmt.Errorf("Unknown error stopping VM %s, error: %+v", vm.Id, newVm.Error)
+	}
 }
 
 /*
  Kills a VM forcefully.
- */
+*/
 func (vm *VirtualMachine) Kill(client SkytapClient) (*VirtualMachine, error) {
 	log.WithFields(log.Fields{"vmId": vm.Id}).Info("Killing VM")
 
@@ -132,9 +145,9 @@ func (vm *VirtualMachine) Kill(client SkytapClient) (*VirtualMachine, error) {
 
 /*
  Changes the runstate of the VM to the specified state and waits until the VM is in the desired state.
- */
-func (vm *VirtualMachine) ChangeRunstate(client SkytapClient, runstate string, desiredRunstate string) (*VirtualMachine, error) {
-	log.WithFields(log.Fields{"changeState": runstate, "targetState": desiredRunstate, "vmId": vm.Id}).Info("Changing VM runstate")
+*/
+func (vm *VirtualMachine) ChangeRunstate(client SkytapClient, runstate string, desiredRunstates ...string) (*VirtualMachine, error) {
+	log.WithFields(log.Fields{"changeState": runstate, "targetState": desiredRunstates, "vmId": vm.Id}).Info("Changing VM runstate")
 
 	ready, err := vm.WaitUntilReady(client)
 	if err != nil {
@@ -148,7 +161,7 @@ func (vm *VirtualMachine) ChangeRunstate(client SkytapClient, runstate string, d
 	if err != nil {
 		return vm, err
 	}
-	return vm.WaitUntilInState(client, []string{desiredRunstate})
+	return vm.WaitUntilInState(client, desiredRunstates, true)
 }
 
 func (vm *VirtualMachine) GetCredentials(client SkytapClient) ([]VmCredential, error) {
@@ -192,7 +205,7 @@ func (c *VmCredential) Password() (string, error) {
 
 /*
  Get a VM from an existing environment.
- */
+*/
 func GetVirtualMachineInEnvironment(client SkytapClient, envId string, vmId string) (*VirtualMachine, error) {
 	vm := &VirtualMachine{}
 
@@ -206,7 +219,7 @@ func GetVirtualMachineInEnvironment(client SkytapClient, envId string, vmId stri
 
 /*
  Get a VM from an existing template.
- */
+*/
 func GetVirtualMachineInTemplate(client SkytapClient, templateId string, vmId string) (*VirtualMachine, error) {
 	vm := &VirtualMachine{}
 
@@ -220,7 +233,7 @@ func GetVirtualMachineInTemplate(client SkytapClient, templateId string, vmId st
 
 /*
  Get a VM without reference to environment or template. The result object should contain information on its source.
- */
+*/
 func GetVirtualMachine(client SkytapClient, vmId string) (*VirtualMachine, error) {
 	vm := &VirtualMachine{}
 
@@ -234,7 +247,7 @@ func GetVirtualMachine(client SkytapClient, vmId string) (*VirtualMachine, error
 
 /*
  Delete a VM.
- */
+*/
 func DeleteVirtualMachine(client SkytapClient, vmId string) error {
 	log.WithFields(log.Fields{"vmId": vmId}).Info("Deleting VM")
 

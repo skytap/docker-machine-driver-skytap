@@ -13,8 +13,8 @@ import (
 	"github.com/skytap/docker-machine-driver-skytap/api"
 	"github.com/tmc/scp"
 	"golang.org/x/crypto/ssh"
-	"time"
 	"regexp"
+	"time"
 )
 
 const (
@@ -47,7 +47,7 @@ func NewDriver(hostName, storePath string) drivers.Driver {
 		DeviceConfig:      deviceConfig{},
 		Vm:                api.VirtualMachine{},
 		LogLevel:          logrus.WarnLevel,
-		LastState: state.None,
+		LastState:         state.None,
 		BaseDriver: &drivers.BaseDriver{
 			MachineName: hostName,
 			StorePath:   storePath,
@@ -129,16 +129,29 @@ func (d *Driver) Create() error {
 		if err != nil {
 			return err
 		}
-		if template == nil {
-			return errors.New(fmt.Sprintf("Specified VM %s is not associated with a template", d.DeviceConfig.SourceVMId))
+
+		if template != nil {
+			env, err = api.CreateNewEnvironmentWithVms(client, template.Id, []string{vm.Id})
+			if err != nil {
+				return err
+			}
+		} else {
+			sourceEnv, err := vm.GetEnvironment(client)
+			if err != nil {
+				return err
+			}
+			if sourceEnv == nil {
+				return fmt.Errorf("VM not associated with template or environment, don't know how to build new environment with VM")
+			}
+			env, err = api.CopyEnvironmentWithVms(client, sourceEnv.Id, []string{vm.Id})
+			if err != nil {
+				return err
+			}
 		}
 
-		env, err = api.CreateNewEnvironment(client, template.Id)
-		if err != nil {
-			return err
-		}
 		d.DeviceConfig.EnvironmentId = env.Id
 		env, err = env.WaitUntilReady(client)
+
 		if err != nil {
 			return err
 		}
@@ -191,6 +204,10 @@ func (d *Driver) Create() error {
 	}
 
 	vm := env.Vms[len(env.Vms)-1]
+	vm, err = vm.WaitUntilReady(client)
+	if err != nil {
+		return err
+	}
 
 	// Rename interface to match name of machine from docker-machine's perspective.
 	_, err = vm.RenameNetworkInterface(client, env.Id, vm.Interfaces[0].Id, d.MachineName)

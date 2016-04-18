@@ -1,15 +1,14 @@
 package api
 
-import (
-)
+import ()
 
 const (
-	RunStateStart  = "running"
-	RunStateStop   = "stopped"
-	RunStatePause  = "suspended"
-	RunStateKill   = "halted"
-	RunStateBusy   = "busy"
-	RunStateReset  = "reset"
+	RunStateStart = "running"
+	RunStateStop  = "stopped"
+	RunStatePause = "suspended"
+	RunStateKill  = "halted"
+	RunStateBusy  = "busy"
+	RunStateReset = "reset"
 )
 
 func isOkStatus(code int) bool {
