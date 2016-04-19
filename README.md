@@ -24,11 +24,12 @@ Alternatively you can use environment variables:
 ### VM credentials
 Your source VM must be pre-configured as follows
 
-SSH User
-Create a user setup for SSH access. This need only be password-based SSH. The Skytap driver will automatically create an insecure keypair for this user
-You can optionally setup keys for the user ahead of time. To configure SSH access with the insecure keypair, place the public key into the ~/.ssh/authorized_keys file for the user. Note that OpenSSH is very picky about file permissions. Therefore, make sure that ~/.ssh has 0700 permissions and the authorized keys file has 0600 permissions.
+####SSH User
+Create a user configured for SSH access. This need only be for password-based SSH. The Skytap driver will automatically create an insecure keypair for this user.
 
-Password-less sudo
+You can optionally setup keys for the user ahead of time. To configure SSH access with the insecure keypair, place the public key into the `~/.ssh/authorized_keys` file for the user. Note that OpenSSH is very picky about file permissions. Therefore, make sure that `~/.ssh` has 0700 permissions and the authorized keys file has 0600 permissions.
+
+####Password-less sudo
 The Docker installation requires password-less sudo. Configure it (usually using `visudo`) to allow password-less sudo for the SSH user. This can be done with the following line at the end of the configuration file:
 
   `{user} ALL=(ALL) NOPASSWD: ALL`
@@ -72,12 +73,12 @@ When executing Docker Machine in debug mode with the -D flag, you can specify a 
 -  `error`:
 
 ## Building
-Run the ./build.sh scripts to build for Linux, OS X (darwin) and Windows. The appropriate executable for the hardware should be copied to a file called docker-machine-driver-skytap somewhere in the user's PATH, so that the main docker-machine executable can locate it.
+Run the `./build.sh` scripts to build for Linux, OS X (darwin) and Windows. The appropriate executable for the hardware should be copied to a file called docker-machine-driver-skytap somewhere in the user's PATH, so that the main docker-machine executable can locate it.
 
 ## API Tests
-You must provide configuration to run the tests. Copy the api/testdata/config.json.sample file to api/testdata/config.json, and fill out the required fields. Note the the tests were run against a template containing a single Ubunto 14 server VM and a preconfigured NAT based VPN. Other configurations may cause spurious test errors.
+You must provide configuration to run the tests. Copy the `api/testdata/config.json.sample` file to `api/testdata/config.json`, and fill out the required fields. Note the the tests were run against a template containing a single Ubuntu 14.04 server VM and a preconfigured NAT based VPN. Other configurations may cause spurious test errors.
 
-Change to a project root directory like ~/work/skytap
+Change to a project root directory like `~/work/skytap`
 
     export GOPATH=`pwd`
     go get -t github.com/skytap/docker-machine-driver-skytap/api
