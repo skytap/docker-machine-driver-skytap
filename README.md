@@ -1,24 +1,24 @@
 # Skytap Driver for Docker Machine (technical preview)
 Create docker machines on [Skytap](http://www.skytap.com).
 
-To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User Id, your Skytap API Security Token, and VM Id to use as the source image for the new machine.
+To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User Id, your Skytap API Security Token, and the VM Id to use as the source image for the new machine.
 
 ## Configuring credentials
-Before using the Skytap driver, ensure that you've retrieved your API credentials and the credentials on the VM image are properly setup.
+Before using the Skytap driver, retrieve your API credentials and ensure the credentials on the VM image are properly setup.
 
 ### Skytap API credentials
-Before using the Skytap driver be sure you've retrieved your API key from your Skytap account page.
+The driver uses the Skytap RESTful API to provision the VM and control state. You will supply your Skytap login and API key (available from your My Account page).
 
 ####Command line flags
 You can use the flags `--skytap-user-id` and `--skytap-api-security-token` on the command line:
 
-$ docker-machine create --driver skytap --skytap-user-id janedoe --skytap-api-security-token 73bc***** ... skytap-machine01
+  $ docker-machine create --driver skytap --skytap-user-id janedoe --skytap-api-security-token 73bc***** ... skytap-machine01
 
 ####Environment variables
 Alternatively you can use environment variables:
 
     $ export SKYTAP_USER_ID=janedoe
-    $ export SKYTAP_API_SECURITY_TOPKEN=73bc*****
+    $ export SKYTAP_API_SECURITY_TOKEN=73bc*****
     $ docker-machine create --driver skytap ... skytap-machine01
 
 ### VM credentials
@@ -29,9 +29,9 @@ Create a user setup for SSH access. This need only be password-based SSH. The Sk
 You can optionally setup keys for the user ahead of time. To configure SSH access with the insecure keypair, place the public key into the ~/.ssh/authorized_keys file for the user. Note that OpenSSH is very picky about file permissions. Therefore, make sure that ~/.ssh has 0700 permissions and the authorized keys file has 0600 permissions.
 
 Password-less sudo
-The Docker installation requires password-less sudo. Configure it (usually using visudo) to allow passwordless sudo for the SSH user. This can be done with the following line at the end of the configuration file:
+The Docker installation requires password-less sudo. Configure it (usually using `visudo`) to allow password-less sudo for the SSH user. This can be done with the following line at the end of the configuration file:
 
-{user} ALL=(ALL) NOPASSWD: ALL
+  `{user} ALL=(ALL) NOPASSWD: ALL`
 
 VM credentials
 The Skytap provider will retrieve the password for the SSH user from the VM metadata. You must store the username and password with the VM. See [VM Credentials](http://help.skytap.com/#VM_Settings_Credentials.html) for more information.
