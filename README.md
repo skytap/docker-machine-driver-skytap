@@ -1,4 +1,4 @@
-# Skytap Drive for Docker Machine (technical preview)
+# Skytap Driver for Docker Machine (technical preview)
 Create docker machines on [Skytap](http://www.skytap.com).
 
 To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User Id, your Skytap API Security Token, and VM Id to use as the source image for the new machine.
@@ -18,8 +18,8 @@ $ docker-machine create --driver skytap --skytap-user-id janedoe --skytap-api-se
 Alternatively you can use environment variables:
 
     $ export SKYTAP_USER_ID=janedoe
-    $ export SKYTAP_API_SECURITY_TOPKEN=MY-SECURITY-TOKEN
-    $ docker-machine create --driver skytap aws01
+    $ export SKYTAP_API_SECURITY_TOPKEN=73bc*****
+    $ docker-machine create --driver skytap ... skytap-machine01
 
 ### VM credentials
 Your source VM must be pre-configured as follows
@@ -68,6 +68,8 @@ When executing Docker Machine in debug mode with the -D flag, you can specify a 
 
 -  `info`: Default level providing basic information
 -  `debug`: Provides detailed information on each Skytap api call
+-  `warn`:
+-  `error`:
 
 ## Building
 Run the ./build.sh scripts to build for Linux, OS X (darwin) and Windows. The appropriate executable for the hardware should be copied to a file called docker-machine-driver-skytap somewhere in the user's PATH, so that the main docker-machine executable can locate it.
@@ -82,4 +84,4 @@ Change to a project root directory like ~/work/skytap
     go test -v github.com/skytap/docker-machine-driver-skytap/api
 
 ## License
-Apache 2.0; see [LICENSE](License) for details
+Apache 2.0; see [LICENSE](LICENSE) for details
