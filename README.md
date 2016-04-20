@@ -1,40 +1,40 @@
 # Skytap Driver for Docker Machine (technical preview)
-Create docker machines on [Skytap](http://www.skytap.com).
+##Create docker machines on [Skytap](http://www.skytap.com).
 
 To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User Id, your Skytap API Security Token, and the VM Id to use as the source image for the new machine.
 
 ## Configuring credentials
-Before using the Skytap driver, retrieve your API credentials and ensure the credentials on the VM image are properly setup.
+Before using the Skytap driver, retrieve your API credentials and ensure the credentials on the VM image are properly configured.
 
 ### Skytap API credentials
-The driver uses the Skytap RESTful API to provision the VM and control state. You will supply your Skytap login and API key (available from your My Account page).
+The driver uses the Skytap RESTful API to provision the VM and control state. You will supply your Skytap login and API key (logon to your Skytap account and go to the My Account page).
 
 ####Command line flags
 You can use the flags `--skytap-user-id` and `--skytap-api-security-token` on the command line:
 
-  $ docker-machine create --driver skytap --skytap-user-id janedoe --skytap-api-security-token 73bc***** ... skytap-machine01
+  $ docker-machine create --driver skytap --skytap-user-id janedoe --skytap-api-security-token 73bc***** {other flags} skytap-machine01
 
 ####Environment variables
 Alternatively you can use environment variables:
 
     $ export SKYTAP_USER_ID=janedoe
     $ export SKYTAP_API_SECURITY_TOKEN=73bc*****
-    $ docker-machine create --driver skytap ... skytap-machine01
+    $ docker-machine create --driver skytap {other flags} skytap-machine01
 
 ### VM credentials
-Your source VM must be pre-configured as follows
+Your source VM must be pre-configured as follows.
 
 ####SSH User
 Create a user configured for SSH access. This need only be for password-based SSH. The Skytap driver will automatically create an insecure keypair for this user.
 
-You can optionally setup keys for the user ahead of time. To configure SSH access with the insecure keypair, place the public key into the `~/.ssh/authorized_keys` file for the user. Note that OpenSSH is very picky about file permissions. Therefore, make sure that `~/.ssh` has 0700 permissions and the authorized keys file has 0600 permissions.
+You can optionally setup keys for the user ahead of time. To configure SSH access with the insecure keypair, place the public key into the `~/.ssh/authorized_keys` file for the user. Note that OpenSSH is sensitive about file permissions. Therefore, make sure that `~/.ssh` has 0700 permissions and the authorized keys file has 0600 permissions.
 
 ####Password-less sudo
-The Docker installation requires password-less sudo. Configure it (usually using `visudo`) to allow password-less sudo for the SSH user. This can be done with the following line at the end of the configuration file:
+The Docker installation process requires password-less sudo. Configure it (usually using `visudo`) to allow password-less sudo for the SSH user. This can be done by adding the following line at the end of the configuration file:
 
   `{user} ALL=(ALL) NOPASSWD: ALL`
 
-VM credentials
+####VM credentials
 The Skytap provider will retrieve the password for the SSH user from the VM metadata. You must store the username and password with the VM. See [VM Credentials](http://help.skytap.com/#VM_Settings_Credentials.html) for more information.
 
 ## Options
@@ -69,8 +69,8 @@ When executing Docker Machine in debug mode with the -D flag, you can specify a 
 
 -  `info`: Default level providing basic information
 -  `debug`: Provides detailed information on each Skytap api call
--  `warn`:
--  `error`:
+-  `warn`: Outputs warning messages
+-  `error`: Outputs error messages
 
 ## Building
 Run the `./build.sh` scripts to build for Linux, OS X (darwin) and Windows. The appropriate executable for the hardware should be copied to a file called docker-machine-driver-skytap somewhere in the user's PATH, so that the main docker-machine executable can locate it.
