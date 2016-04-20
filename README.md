@@ -1,7 +1,7 @@
 # Skytap Driver for Docker Machine (technical preview)
 ##Create docker machines on [Skytap](http://www.skytap.com).
 
-To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User Id, your Skytap API Security Token, and the VM Id to use as the source image for the new machine.
+To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User ID, your Skytap API Security Token, and the VM ID to use as the source image for the new machine.
 
 ## Configuring credentials
 Before using the Skytap driver, retrieve your API credentials and ensure the credentials on the VM image are properly configured.
@@ -39,14 +39,14 @@ The Skytap provider will retrieve the password for the SSH user from the VM meta
 
 ## Options
 
--   `--skytap-api-security-token`: Your secrect security token
--   `--skytap-env-id`: Id for the environment to add the VM to. Leave blank to create to a new environment
+-   `--skytap-api-security-token`: Your secret security token
+-   `--skytap-env-id`: ID for the environment to add the VM to. Leave blank to create to a new environment
 -   `--skytap-ssh-key`:	SSH private key path (if not provided, identities in ssh-agent will be used)
 -   `--skytap-ssh-port`: SSH port
 -   `--skytap-ssh-user`: SSH user
--   `--skytap-user-id`:	Skytap user id
--   `--skytap-vm-id`:	Id for the VM template to use
--   `--skytap-vpn-id`: VPN id to connect to the environment
+-   `--skytap-user-id`:	Skytap user ID
+-   `--skytap-vm-id`:	ID for the VM template to use
+-   `--skytap-vpn-id`: VPN ID to connect to the environment
 -   `--skytap-api-logging-level`: The logging level to use when running api commands.
 
 

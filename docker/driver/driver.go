@@ -73,28 +73,28 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	return []mcnflag.Flag{
 		mcnflag.StringFlag{
 			Name:   "skytap-user-id",
-			Usage:  "Skytap user id",
+			Usage:  "Skytap user ID",
 			EnvVar: "SKYTAP_USER_ID",
 		},
 		mcnflag.StringFlag{
 			Name:   "skytap-api-security-token",
-			Usage:  "Your secrect security token",
+			Usage:  "Your secret security token",
 			EnvVar: "SKYTAP_API_SECURITY_TOKEN",
 		},
 		mcnflag.StringFlag{
 			Name:   "skytap-vm-id",
-			Usage:  "Id for the VM template to use",
+			Usage:  "ID for the VM template to use",
 			EnvVar: "SKYTAP_VM_ID",
 		},
 		mcnflag.StringFlag{
 			Name:   "skytap-env-id",
-			Usage:  "Id for the environment to add the VM to. Leave blank to create to a new environment",
+			Usage:  "ID for the environment to add the VM to. Leave blank to create to a new environment",
 			Value:  defaultEnvironmentId,
 			EnvVar: "SKYTAP_ENV_ID",
 		},
 		mcnflag.StringFlag{
 			Name:   "skytap-vpn-id",
-			Usage:  "VPN id to connect to the environment",
+			Usage:  "VPN ID to connect to the environment",
 			Value:  defaultVPNId,
 			EnvVar: "SKYTAP_VPN_ID",
 		},
