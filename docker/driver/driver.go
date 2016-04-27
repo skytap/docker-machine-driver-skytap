@@ -120,6 +120,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:  "skytap-api-logging-level",
 			Usage: "The logging level to use when running api commands.",
 			Value: "info",
+			EnvVar: "SKYTAP_API_LOGGING_LEVEL",
 		},
 	}
 }
