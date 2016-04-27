@@ -45,7 +45,10 @@ The Skytap provider will retrieve the password for the SSH user from the VM meta
 -   `--skytap-ssh-port`: SSH port
 -   `--skytap-ssh-user`: SSH user
 -   `--skytap-user-id`:	Skytap user ID
+-   `--skytap-vm-cpus`: The number of CPUs for the VM. The default is what’s configured for the source VM.
+-   `--skytap-vm-cpuspersocket`: Specifies how the total number of CPUs should be distributed across virtual sockets. The default is what’s configured for the source VM.
 -   `--skytap-vm-id`:	ID for the VM template to use
+-   `--skytap-vm-ram`: The amount of ram, in megabytes, allocated to the VM. The default is what’s configured for the source VM.
 -   `--skytap-vpn-id`: VPN ID to connect to the environment
 -   `--skytap-api-logging-level`: The logging level to use when running api commands.
 
@@ -54,15 +57,18 @@ Environment variables and default values:
 
 | CLI option                               | Environment variable        | Default          |
 | ---------------------------------------- | ----------------------------| ---------------- |
-| `--skytap-user-id`                       | `SKYTAP_USER_ID`            | -                |
 | `--skytap-api-security-token`            | `SKYTAP_API_SECURITY_TOKEN` | -                |
-| `--skytap-vm-id`                         | `SKYTAP_VM_ID`              | -                |
 | `--skytap-env-id`                        | `SKYTAP_ENV_ID`             | `New`            |
-| `--skytap-vpn-id`                        | `SKYTAP_VPN_ID`             | -                |
 | `--skytap-ssh-user`                      | `SKYTAP_SSH_USER`           | `root`           |
 | `--skytap-ssh-key`                       | `SKYTAP_SSH_KEY`            | -                |
 | `--skytap-ssh-port`                      | `SKYTAP_SSH_PORT`           | `22`             |
-| `--skytap-api-logging-level`             | -                           | `info`           |
+| `--skytap-user-id`                       | `SKYTAP_USER_ID`            | -                |
+| `--skytap-vm-cpus`                       | `SKYTAP_VM_CPUS`            | -                |
+| `--skytap-vm-cpuspersocket`              | `SKYTAP_VM_CPUSPERSOCKET`   | -                |
+| `--skytap-vm-id`                         | `SKYTAP_VM_ID`              | -                |
+| `--skytap-vm-ram`                        | `SKYTAP_VM_RAM`             | -                |
+| `--skytap-vpn-id`                        | `SKYTAP_VPN_ID`             | -                |
+| `--skytap-api-logging-level`             | `SKYTAP_API_LOGGING_LEVEL`  | `info`           |
 
 ## Logging level
 When executing Docker Machine in debug mode with the -D flag, you can specify a logging level for the Skytap API calls.
