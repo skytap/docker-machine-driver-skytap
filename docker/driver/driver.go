@@ -218,6 +218,15 @@ func (d *Driver) Create() error {
 		}
 	}
 
+	sleepTime := 2 * time.Second
+	log.Infof("Sleeping for %s, so that VM should be fully ready", sleepTime)
+	time.Sleep(sleepTime)
+
+	env, err = env.WaitUntilReady(client)
+	if err != nil {
+		return err
+	}
+
 	vm := env.Vms[len(env.Vms)-1]
 	vm, err = vm.WaitUntilReady(client)
 	if err != nil {
