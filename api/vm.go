@@ -36,6 +36,7 @@ type VirtualMachine struct {
 	TemplateUrl    string              `json:"template_url,omitempty"`
 	EnvironmentUrl string              `json:"configuration_url,omitempty"`
 	Interfaces     []*NetworkInterface `json:"interfaces`
+	Hardware       Hardware            `json:"hardware"`
 }
 
 type VmCredential struct {
@@ -47,6 +48,16 @@ type NameUpdate struct {
 	Hostname string `json:"hostname"`
 }
 
+type Hardware struct {
+	Cpus          *int `json:"cpus,omitempty"`
+	CpusPerSocket *int `json:"cpus_per_socket,omitempty"`
+	Ram           *int `json:"ram,omitempty"`
+}
+
+type HardwareUpdate struct {
+	Hardware Hardware `json:"hardware"`
+}
+
 // Paths for VMs.
 func vmIdInEnvironmentPath(envId string, vmId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId)
@@ -55,6 +66,7 @@ func vmIdInTemplatePath(templateId string, vmId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s.json", TemplatePath, templateId, VmPath, vmId)
 }
 func vmIdPath(vmId string) string         { return fmt.Sprintf("%s/%s", VmPath, vmId) }
+func vmUpdatePath(vmId string) string     { return fmt.Sprintf("%s/%s.json", VmPath, vmId) }
 func vmCredentialPath(vmId string) string { return fmt.Sprintf("%s/%s/credentials.json", VmPath, vmId) }
 func networkInterfacePath(envId string, vmId string, interfaceId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s/%s.json", EnvironmentPath, envId, VmPath, vmId, InterfacePath, interfaceId)
@@ -199,6 +211,33 @@ func (vm *VirtualMachine) RenameNetworkInterface(client SkytapClient, envId stri
 	log.WithFields(log.Fields{"newName": name, "interfaceId": interfaceId, "envId": envId, "vmId": vm.Id}).Infof("Renaming interface")
 	_, err := RunSkytapRequest(client, false, interfaceResp, nameReq)
 	return interfaceResp, err
+}
+
+func (vm *VirtualMachine) UpdateHardware(client SkytapClient, hardware Hardware, restartVm bool) (*VirtualMachine, error) {
+	if vm.Runstate != RunStateStop {
+		vm, err := vm.Stop(client)
+		if err != nil {
+			return vm, err
+		}
+	}
+
+	hardwareReq := func(s *sling.Sling) *sling.Sling {
+		return s.Put(vmUpdatePath(vm.Id)).BodyJSON(&HardwareUpdate{Hardware: hardware})
+	}
+
+	newVm := &VirtualMachine{}
+
+	log.WithFields(log.Fields{"hardware": hardware, "vmId": vm.Id}).Infof("Updating VM hardware")
+	_, err := RunSkytapRequest(client, false, newVm, hardwareReq)
+
+	if err != nil {
+		return newVm, err
+	}
+	if restartVm {
+		newVm, err = newVm.Start(client)
+	}
+
+	return newVm, err
 }
 
 func (c *VmCredential) Username() (string, error) {

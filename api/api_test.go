@@ -224,6 +224,41 @@ func TestChangeNetworkHostname(t *testing.T) {
 
 }
 
+func TestUpdateHardware(t *testing.T) {
+	client := skytapClient(t)
+	c := getTestConfig(t)
+
+	env, err := CreateNewEnvironment(client, c.TemplateId)
+	defer DeleteEnvironment(client, env.Id)
+	require.NoError(t, err, "Error creating environment")
+
+	vm, err := GetVirtualMachine(client, env.Vms[0].Id)
+	require.NoError(t, err, "Error creating vm")
+
+	cpus := 4
+	persock := 2
+	hardware := Hardware{&cpus, &persock, nil}
+
+	updated, err := vm.UpdateHardware(client, hardware, false)
+	require.NoError(t, err, "Error updating hardware")
+
+	require.Equal(t, hardware.Cpus, updated.Hardware.Cpus)
+	require.Equal(t, hardware.CpusPerSocket, updated.Hardware.CpusPerSocket)
+	require.Equal(t, vm.Hardware.Ram, updated.Hardware.Ram)
+
+	ram := 4096
+	updateRam := Hardware{Ram: &ram}
+
+	updated, err = vm.WaitUntilReady(client)
+	require.NoError(t, err, "Error waiting on vm")
+
+	updated, err = vm.UpdateHardware(client, updateRam, false)
+	require.NoError(t, err, "Error updating ram")
+	require.Equal(t, hardware.Cpus, updated.Hardware.Cpus)
+	require.Equal(t, hardware.CpusPerSocket, updated.Hardware.CpusPerSocket)
+	require.Equal(t, updateRam.Ram, updated.Hardware.Ram)
+}
+
 func TestAttachVpn(t *testing.T) {
 	client := skytapClient(t)
 	c := getTestConfig(t)
