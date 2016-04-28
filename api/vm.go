@@ -227,7 +227,7 @@ func (vm *VirtualMachine) UpdateHardware(client SkytapClient, hardware Hardware,
 
 	newVm := &VirtualMachine{}
 
-	log.WithFields(log.Fields{"hardware": hardware, "vmId": vm.Id}).Infof("Updating VM hardware")
+	log.WithFields(log.Fields{"vmId": vm.Id}).Infof("Updating VM hardware: %+v", hardware)
 	_, err := RunSkytapRequest(client, false, newVm, hardwareReq)
 
 	if err != nil {
@@ -247,7 +247,7 @@ func (vm *VirtualMachine) ChangeAttribute(client SkytapClient, queryStruct inter
 
 	newVm := &VirtualMachine{}
 
-	log.WithFields(log.Fields{"query": queryStruct, "vmId": vm.Id}).Infof("Updating VM attribute")
+	log.WithFields(log.Fields{"vmId": vm.Id}).Infof("Updating VM attribute: %+v", queryStruct)
 	_, err := RunSkytapRequest(client, false, newVm, changeReq)
 
 	return newVm, err
