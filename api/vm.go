@@ -240,6 +240,26 @@ func (vm *VirtualMachine) UpdateHardware(client SkytapClient, hardware Hardware,
 	return newVm, err
 }
 
+func (vm *VirtualMachine) ChangeAttribute(client SkytapClient, queryStruct interface{}) (*VirtualMachine, error) {
+	changeReq := func(s *sling.Sling) *sling.Sling {
+		return s.Put(vmUpdatePath(vm.Id)).QueryStruct(queryStruct)
+	}
+
+	newVm := &VirtualMachine{}
+
+	log.WithFields(log.Fields{"query": queryStruct, "vmId": vm.Id}).Infof("Updating VM attribute")
+	_, err := RunSkytapRequest(client, false, newVm, changeReq)
+
+	return newVm, err
+}
+
+type NameQuery struct {
+	Name string `url:"name"`
+}
+func (vm *VirtualMachine) SetName(client SkytapClient, name string) (*VirtualMachine, error) {
+	return vm.ChangeAttribute(client, &NameQuery{name})
+}
+
 func (c *VmCredential) Username() (string, error) {
 	parts := strings.Split(c.Text, "/")
 	if len(parts) != 2 {

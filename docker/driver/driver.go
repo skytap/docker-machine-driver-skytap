@@ -236,6 +236,10 @@ func (d *Driver) Create() error {
 	// Rename interface to match name of machine from docker-machine's perspective.
 	_, err = vm.RenameNetworkInterface(client, env.Id, vm.Interfaces[0].Id, d.MachineName)
 	if err != nil {
+	// Also set VM name to the docker-machine name
+	log.Infof("Naming VM")
+	vm, err = vm.SetName(client, d.MachineName)
+	if err != nil {
 		return err
 	}
 

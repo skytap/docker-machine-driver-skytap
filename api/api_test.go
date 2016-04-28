@@ -259,6 +259,24 @@ func TestUpdateHardware(t *testing.T) {
 	require.Equal(t, updateRam.Ram, updated.Hardware.Ram)
 }
 
+func TestChangeName(t *testing.T) {
+	client := skytapClient(t)
+	c := getTestConfig(t)
+
+	env, err := CreateNewEnvironment(client, c.TemplateId)
+	defer DeleteEnvironment(client, env.Id)
+	require.NoError(t, err, "Error creating environment")
+
+	vm, err := GetVirtualMachine(client, env.Vms[0].Id)
+	require.NoError(t, err, "Error creating vm")
+
+	name := "foo"
+	vm, err = vm.SetName(client, name)
+	require.NoError(t, err, "Error setting name")
+	require.Equal(t, name, vm.Name)
+
+}
+
 func TestAttachVpn(t *testing.T) {
 	client := skytapClient(t)
 	c := getTestConfig(t)
