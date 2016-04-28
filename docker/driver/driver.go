@@ -24,7 +24,7 @@ import (
 	"github.com/docker/machine/libmachine/mcnflag"
 	dockerSsh "github.com/docker/machine/libmachine/ssh"
 	"github.com/docker/machine/libmachine/state"
-	"github.com/skytap/docker-machine-driver-skytap/api"
+	"github.com/skytap/skytap-sdk-go/api"
 	"github.com/tmc/scp"
 	"golang.org/x/crypto/ssh"
 	"regexp"
