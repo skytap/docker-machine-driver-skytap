@@ -34,6 +34,9 @@ import (
 const (
 	defaultEnvironmentId = "New"
 	defaultVPNId         = ""
+	defaultCPUs          = 0
+	defaultCPUsPerSocket = 0
+	defaultRAM           = 0
 	driverName           = "skytap"
 )
 
@@ -47,6 +50,7 @@ type Driver struct {
 	Vm                api.VirtualMachine
 	LogLevel          logrus.Level
 	LastState         state.State
+	HardwareConfig    *api.Hardware
 }
 
 type deviceConfig struct {
@@ -117,10 +121,25 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			EnvVar: "SKYTAP_SSH_PORT",
 		},
 		mcnflag.StringFlag{
-			Name:  "skytap-api-logging-level",
-			Usage: "The logging level to use when running api commands.",
-			Value: "info",
+			Name:   "skytap-api-logging-level",
+			Usage:  "The logging level to use when running api commands.",
+			Value:  "info",
 			EnvVar: "SKYTAP_API_LOGGING_LEVEL",
+		},
+		mcnflag.IntFlag{
+			Name:   "skytap-vm-cpus",
+			Usage:  "Number of CPUs to configure in target VM",
+			EnvVar: "SKYTAP_VM_CPUS",
+		},
+		mcnflag.IntFlag{
+			Name:   "skytap-vm-cpuspersocket",
+			Usage:  "Specifies how the total number of CPUs should be distributed across virtual sockets. The default is what’s configured for the source VM.",
+			EnvVar: "SKYTAP_VM_CPUSPERSOCKET",
+		},
+		mcnflag.IntFlag{
+			Name:   "skytap-vm-ram",
+			Usage:  "The amount of ram, in megabytes, allocated to the VM. The default is what’s configured for the source VM.",
+			EnvVar: "SKYTAP_VM_RAM",
 		},
 	}
 }
@@ -219,7 +238,6 @@ func (d *Driver) Create() error {
 	}
 
 	sleepTime := 2 * time.Second
-	log.Infof("Sleeping for %s, so that VM should be fully ready", sleepTime)
 	time.Sleep(sleepTime)
 
 	env, err = env.WaitUntilReady(client)
@@ -234,8 +252,23 @@ func (d *Driver) Create() error {
 	}
 
 	// Rename interface to match name of machine from docker-machine's perspective.
+	log.Infof("Naming network interface")
 	_, err = vm.RenameNetworkInterface(client, env.Id, vm.Interfaces[0].Id, d.MachineName)
 	if err != nil {
+		sleepTime := 10 * time.Second
+		log.Infof("Got error renaming NIC, sleeping %s and trying again.", sleepTime)
+		time.Sleep(sleepTime)
+		vm, err = vm.WaitUntilReady(client)
+		if err != nil {
+			return err
+		}
+		_, err = vm.RenameNetworkInterface(client, env.Id, vm.Interfaces[0].Id, d.MachineName)
+		if err != nil {
+			log.Infof("Unable to rename NIC to '%s', check that name is not already in use by another VM.", d.MachineName)
+			return err
+		}
+	}
+
 	// Also set VM name to the docker-machine name
 	log.Infof("Naming VM")
 	vm, err = vm.SetName(client, d.MachineName)
@@ -243,7 +276,17 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	// Change hardware options if requested
+	if d.HardwareConfig != nil {
+		log.Infof("Updating hardware")
+		vm, err = vm.UpdateHardware(client, *d.HardwareConfig, false)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Just added a VM so pick the last one
+	log.Infof("Starting ...")
 	started, err := vm.Start(client)
 	if err != nil {
 		return err
@@ -260,6 +303,7 @@ func (d *Driver) Create() error {
 		return err
 	}
 
+	log.Infof("Generating SSH key and deploying")
 	err = d.GenerateSshKeyAndCopy()
 	if err != nil {
 		return err
@@ -513,6 +557,20 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		SourceVMId:    flags.String("skytap-vm-id"),
 		EnvironmentId: envId,
 		VPNId:         flags.String("skytap-vpn-id"),
+	}
+	cpus := flags.Int("skytap-vm-cpus")
+	cpuspersocket := flags.Int("skytap-vm-cpuspersocket")
+	ram := flags.Int("skytap-vm-ram")
+	hc := api.Hardware{
+		Cpus:          &cpus,
+		CpusPerSocket: &cpuspersocket,
+		Ram:           &ram,
+	}
+	if *hc.Cpus != defaultCPUs || *hc.CpusPerSocket != defaultCPUsPerSocket || *hc.Ram != defaultRAM {
+		if *hc.CpusPerSocket != defaultCPUsPerSocket && *hc.Cpus % *hc.CpusPerSocket != 0 {
+			return fmt.Errorf("Specified CPUs (%d) must be a multiple of CPUs per socket (%d)", *hc.Cpus, *hc.CpusPerSocket)
+		}
+		d.HardwareConfig = &hc
 	}
 
 	if err := validateDeviceConfig(d.DeviceConfig); err != nil {
