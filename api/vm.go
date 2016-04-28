@@ -256,6 +256,7 @@ func (vm *VirtualMachine) ChangeAttribute(client SkytapClient, queryStruct inter
 type NameQuery struct {
 	Name string `url:"name"`
 }
+
 func (vm *VirtualMachine) SetName(client SkytapClient, name string) (*VirtualMachine, error) {
 	return vm.ChangeAttribute(client, &NameQuery{name})
 }

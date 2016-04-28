@@ -567,7 +567,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		Ram:           &ram,
 	}
 	if *hc.Cpus != defaultCPUs || *hc.CpusPerSocket != defaultCPUsPerSocket || *hc.Ram != defaultRAM {
-		if *hc.CpusPerSocket != defaultCPUsPerSocket && *hc.Cpus % *hc.CpusPerSocket != 0 {
+		if *hc.CpusPerSocket != defaultCPUsPerSocket && *hc.Cpus%*hc.CpusPerSocket != 0 {
 			return fmt.Errorf("Specified CPUs (%d) must be a multiple of CPUs per socket (%d)", *hc.Cpus, *hc.CpusPerSocket)
 		}
 		d.HardwareConfig = &hc
