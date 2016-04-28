@@ -561,14 +561,28 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	cpus := flags.Int("skytap-vm-cpus")
 	cpuspersocket := flags.Int("skytap-vm-cpuspersocket")
 	ram := flags.Int("skytap-vm-ram")
-	hc := api.Hardware{
-		Cpus:          &cpus,
-		CpusPerSocket: &cpuspersocket,
-		Ram:           &ram,
+	hc := api.Hardware{}
+	hasHardware := false
+	if cpus != defaultCPUs {
+		hasHardware = true
+		hc.Cpus = &cpus
 	}
-	if *hc.Cpus != defaultCPUs || *hc.CpusPerSocket != defaultCPUsPerSocket || *hc.Ram != defaultRAM {
-		if *hc.CpusPerSocket != defaultCPUsPerSocket && *hc.Cpus%*hc.CpusPerSocket != 0 {
-			return fmt.Errorf("Specified CPUs (%d) must be a multiple of CPUs per socket (%d)", *hc.Cpus, *hc.CpusPerSocket)
+	if cpuspersocket != defaultCPUsPerSocket {
+		hasHardware = true
+		hc.CpusPerSocket = &cpuspersocket
+	}
+	if ram != defaultRAM {
+		hasHardware = true
+		hc.Ram = &ram
+	}
+
+	if hasHardware {
+		if hc.CpusPerSocket != nil {
+			if hc.Cpus != nil && *hc.CpusPerSocket != defaultCPUsPerSocket && *hc.Cpus%*hc.CpusPerSocket != 0 {
+				return fmt.Errorf("Specified CPUs (%d) must be a multiple of CPUs per socket (%d)", *hc.Cpus, *hc.CpusPerSocket)
+			} else if hc.Cpus == nil {
+				return fmt.Errorf("Specified CPUs per socket but not CPUs, you must specify CPUs in VM when using this option.")
+			}
 		}
 		d.HardwareConfig = &hc
 	}
