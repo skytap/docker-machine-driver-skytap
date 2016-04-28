@@ -385,7 +385,7 @@ func (d *Driver) GenerateSshKeyAndCopy() error {
 		}
 	}
 	if !success {
-		log.Errorf("Unable to SSH to target machine to copy public key credentials after retries: %s", err)
+		log.Infof("Unable to SSH to target machine to copy public key credentials after retries: %s", err)
 		return err
 	}
 	return nil
@@ -401,35 +401,35 @@ func (d *Driver) DoSshCopy(client api.SkytapClient, password string) error {
 	})
 
 	if err != nil {
-		log.Errorf("Error connecting with password credentials: %s", err)
+		log.Infof("Error connecting with password credentials: %s", err)
 		return err
 	}
 
 	if err = runRemoteBashCommand(sshClient, "mkdir -p ~/.ssh"); err != nil {
-		log.Errorf("Error ensuring existence of ~/.ssh directory: %s", err)
+		log.Infof("Error ensuring existence of ~/.ssh directory: %s", err)
 		return err
 	}
 
 	if err = dockerSsh.GenerateSSHKey(d.GetSSHKeyPath()); err != nil {
-		log.Errorf("Error generating keypair locally: %s", err)
+		log.Infof("Error generating keypair locally: %s", err)
 		return err
 	}
 
 	scpSession, err := sshClient.NewSession()
 	if err != nil {
-		log.Errorf("Error creating ssh copy session: %s", err)
+		log.Infof("Error creating ssh copy session: %s", err)
 		return err
 	}
 
 	pubKeyFile := d.GetSSHKeyPath() + ".pub"
 	destFile := "docker-machine-id_rsa.pub"
 	if err = scp.CopyPath(pubKeyFile, destFile, scpSession); err != nil {
-		log.Errorf("Error performing scp of public keyfile: %s", err)
+		log.Infof("Error performing scp of public keyfile: %s", err)
 		return err
 	}
 
 	if err = runRemoteBashCommand(sshClient, fmt.Sprintf("chmod 700 ~/.ssh; cat %s >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys", destFile)); err != nil {
-		log.Errorf("Error adding public key to ~/.ssh/authorized_keys: %s", err)
+		log.Infof("Error adding public key to ~/.ssh/authorized_keys: %s", err)
 		return err
 	}
 
@@ -581,7 +581,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 	logLvlStr := flags.String("skytap-api-logging-level")
 	logLevel, err := logrus.ParseLevel(logLvlStr)
 	if err != nil {
-		log.Errorf("Unable to parse log level as specified '%s'", logLvlStr)
+		log.Infof("Unable to parse log level as specified '%s'", logLvlStr)
 	}
 	d.LogLevel = logLevel
 	d.SetLogLevel()
