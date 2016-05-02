@@ -56,6 +56,13 @@ Command line flags, environment variables and default values:
 | `--skytap-vpn-id`                        | `SKYTAP_VPN_ID`             | -                | VPN ID to connect to the environment.
 | `--skytap-api-logging-level`             | `SKYTAP_API_LOGGING_LEVEL`  | `info`           | The logging level to use when running api commands.
 
+## VM Hardware Settings
+By default the new Docker host will inherit the CPU and memory settings of the source VM. These can be overridden and configured during the create process.
+
+Using `--skytap-vm-ram` you can provide an integer representing the amount of RAM, in megabytes, to allocated to the VM. See the [RAM](http://help.skytap.com/Hardware.html?#RAMMB) section for Hardware Settings in the Skytap help for more information.
+
+Using `--skytap-vm-cpus` and `--skytap-vm-cpuspersocket` you can configure the number of CPUs to allocate to the VM and how those CPUs should be distributed across virtual sockets. The number of CPUs (cores) per socket must be uniformly distributed across the number of sockets. If you provide a number of CPUs but don't specify the number of CPUs per socket, each CPU will be allocated to one socket - one core per virtual socket. If you provide the number of CPUs per socket you must also provide the number of CPUs. For more information on CPUs and CPUs per socket see the [CPU](http://help.skytap.com/Hardware.html?#CPUs) section for the Hardware Settings in the Skytap help. 
+
 ## Logging level
 When executing Docker Machine in debug mode with the -D flag, you can specify a logging level for the Skytap API calls.
 
