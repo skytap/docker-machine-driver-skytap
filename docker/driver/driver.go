@@ -33,6 +33,7 @@ import (
 
 const (
 	defaultEnvironmentId = "New"
+	defaultSSHUser       = "docker"
 	defaultVPNId         = ""
 	defaultCPUs          = 0
 	defaultCPUsPerSocket = 0
@@ -105,7 +106,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 		mcnflag.StringFlag{
 			Name:   "skytap-ssh-user",
 			Usage:  "SSH user",
-			Value:  drivers.DefaultSSHUser,
+			Value:  defaultSSHUser,
 			EnvVar: "SKYTAP_SSH_USER",
 		},
 		mcnflag.StringFlag{
