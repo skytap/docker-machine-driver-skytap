@@ -145,6 +145,67 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	}
 }
 
+func (d *Driver) PreCreateCheck() (err error) {
+  /*
+			The following checks are performed:
+			1. Check the source VM exists
+			2. Check the target environment exists; if adding the machine to an existing environment
+			3. Check the Machine name won't collide with an existing VM's hostname
+			4. If running outside Skytap ensure a VPN Id is provided
+			5. If VPN provided check it exists
+	*/
+
+	d.SetLogLevel()
+	log.Debugf("Skytap client auth: %+v", d.ClientCredentials)
+
+	client := *api.NewSkytapClientFromCredentials(d.ClientCredentials)
+
+	log.Debug("Checking if source VM exists.")
+	vm, err := api.GetVirtualMachine(client, d.DeviceConfig.SourceVMId)
+	if err != nil {
+		return err
+	}
+	log.Debugf("Found VM %s.", vm.Id)
+
+	log.Debug("Checking if target environment exists.")
+  if d.DeviceConfig.EnvironmentId != defaultEnvironmentId {
+		env, err := api.GetEnvironment(client, d.DeviceConfig.EnvironmentId)
+		if err != nil {
+			return err
+		}
+	  log.Debugf("Found environment %s.", env.Id)
+	  // Check if VM hostname already exists
+		for _, vm := range env.Vms {
+			log.Debugf("VM Name: %s", vm.Name)
+			for _, network := range vm.Interfaces {
+				log.Debugf("  VM Hostname: %s", network.Hostname)
+				if network.Hostname == d.MachineName {
+					return fmt.Errorf("A VM (%s) with hostname %s already exists in this environment.", vm.Name, network.Hostname )
+				}
+			}
+		}
+	}
+
+	// If we're running outside a Skytap VM a VPN connection is required.
+	log.Debug("Checking if we require a VPN")
+  resp := api.IsRunningInSkytap()
+	if resp == false && d.DeviceConfig.VPNId == "" {
+			return fmt.Errorf("When running Docker Machine outside Skytap a VPN is required.")
+	}
+
+	// Check if VPN exists
+  if d.DeviceConfig.VPNId != "" {
+		log.Debug("Checking if VPN exists.")
+		vpn, err := api.GetVpn(client, d.DeviceConfig.VPNId)
+		if err != nil {
+			return err
+		}
+		log.Debugf("Found VPN %s.", vpn.Name)
+	}
+
+	return nil
+}
+
 func (d *Driver) Create() error {
 	d.SetLogLevel()
 	log.Info("Creating docker machine in Skytap")
@@ -466,10 +527,6 @@ func (d *Driver) GetSSHHostname() (string, error) {
 
 func (d *Driver) GetMachineName() string {
 	return d.MachineName
-}
-
-func (d *Driver) PreCreateCheck() error {
-	return nil
 }
 
 func (d *Driver) GetURL() (string, error) {
