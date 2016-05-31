@@ -47,7 +47,7 @@ Command line flags, environment variables and default values:
 | `--skytap-env-id`                        | `SKYTAP_ENV_ID`             | `New`            | ID for the environment to add the VM to. Leave blank to create to a new environment.
 | `--skytap-ssh-key`                       | `SKYTAP_SSH_KEY`            | -                | SSH private key path (if not provided, identities in ssh-agent will be used).
 | `--skytap-ssh-port`                      | `SKYTAP_SSH_PORT`           | `22`             | SSH port.
-| `--skytap-ssh-user`                      | `SKYTAP_SSH_USER`           | `root`           | SSH user.
+| `--skytap-ssh-user`                      | `SKYTAP_SSH_USER`           | `docker`         | SSH user.
 | `--skytap-user-id`                       | `SKYTAP_USER_ID`            | -                | Skytap user ID.
 | `--skytap-vm-cpus`                       | `SKYTAP_VM_CPUS`            | -                | The number of CPUs for the VM. The default is what’s configured for the source VM.
 | `--skytap-vm-cpuspersocket`              | `SKYTAP_VM_CPUSPERSOCKET`   | -                | Specifies how the total number of CPUs should be distributed across virtual sockets. The default is what’s configured for the source VM.
@@ -61,7 +61,7 @@ By default the new Docker host will inherit the CPU and memory settings of the s
 
 Using `--skytap-vm-ram` you can provide an integer representing the amount of RAM, in megabytes, to allocated to the VM. See the [RAM](http://help.skytap.com/Hardware.html?#RAMMB) section for Hardware Settings in the Skytap help for more information.
 
-Using `--skytap-vm-cpus` and `--skytap-vm-cpuspersocket` you can configure the number of CPUs to allocate to the VM and how those CPUs should be distributed across virtual sockets. The number of CPUs (cores) per socket must be uniformly distributed across the number of sockets. If you provide a number of CPUs but don't specify the number of CPUs per socket, each CPU will be allocated to one socket - one core per virtual socket. If you provide the number of CPUs per socket you must also provide the number of CPUs. For more information on CPUs and CPUs per socket see the [CPU](http://help.skytap.com/Hardware.html?#CPUs) section for the Hardware Settings in the Skytap help. 
+Using `--skytap-vm-cpus` and `--skytap-vm-cpuspersocket` you can configure the number of CPUs to allocate to the VM and how those CPUs should be distributed across virtual sockets. The number of CPUs (cores) per socket must be uniformly distributed across the number of sockets. If you provide a number of CPUs but don't specify the number of CPUs per socket, each CPU will be allocated to one socket - one core per virtual socket. If you provide the number of CPUs per socket you must also provide the number of CPUs. For more information on CPUs and CPUs per socket see the [CPU](http://help.skytap.com/Hardware.html?#CPUs) section for the Hardware Settings in the Skytap help.
 
 ## Logging level
 When executing Docker Machine in debug mode with the -D flag, you can specify a logging level for the Skytap API calls.
