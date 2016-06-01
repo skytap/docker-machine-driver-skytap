@@ -145,7 +145,7 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 	}
 }
 
-func (d *Driver) PreCreateCheck() (err error) {
+func (d *Driver) PreCreateCheck() error {
   /*
 			The following checks are performed:
 			1. Check the source VM exists
