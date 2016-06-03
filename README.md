@@ -1,4 +1,4 @@
-# Skytap Driver for Docker Machine (technical preview)
+# Skytap Driver for Docker Machine
 ##Create docker machines on [Skytap](http://www.skytap.com).
 
 To create machines on [Skytap](http://www.skytap.com), you must supply 3 parameters: your Skytap User ID, your Skytap API Security Token, and the VM ID to use as the source image for the new machine.
