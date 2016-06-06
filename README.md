@@ -39,7 +39,7 @@ The Skytap provider will retrieve the password for the SSH user from the VM meta
 
 ## Options
 
-Command line flags, environment variables and default values:
+Command line flags, environment variables and default values. These flags are available during the `create` process.
 
 | CLI flag                                 | Environment variable        | Default          | Description
 | ---------------------------------------- | ----------------------------| ---------------- | -----------
@@ -64,7 +64,7 @@ Using `--skytap-vm-ram` you can provide an integer representing the amount of RA
 Using `--skytap-vm-cpus` and `--skytap-vm-cpuspersocket` you can configure the number of CPUs to allocate to the VM and how those CPUs should be distributed across virtual sockets. The number of CPUs (cores) per socket must be uniformly distributed across the number of sockets. If you provide a number of CPUs but don't specify the number of CPUs per socket, each CPU will be allocated to one socket - one core per virtual socket. If you provide the number of CPUs per socket you must also provide the number of CPUs. For more information on CPUs and CPUs per socket see the [CPU](http://help.skytap.com/Hardware.html?#CPUs) section for the Hardware Settings in the Skytap help.
 
 ## Logging level
-When executing Docker Machine in debug mode with the -D flag, you can specify a logging level for the Skytap API calls.
+When executing Docker Machine in debug mode with the `-D` flag, the Skytap driver automatically runs in debug mode. During the `create` process you can control the driver logging level.
 
 -  `info`: Default level providing basic information
 -  `debug`: Provides detailed information on each Skytap api call
