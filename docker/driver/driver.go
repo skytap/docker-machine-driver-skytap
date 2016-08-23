@@ -52,6 +52,7 @@ type Driver struct {
 	LogLevel          logrus.Level
 	LastState         state.State
 	HardwareConfig    *api.Hardware
+	ContainerHost			bool
 }
 
 type deviceConfig struct {
@@ -141,6 +142,11 @@ func (d *Driver) GetCreateFlags() []mcnflag.Flag {
 			Name:   "skytap-vm-ram",
 			Usage:  "The amount of ram, in megabytes, allocated to the VM. The default is what’s configured for the source VM.",
 			EnvVar: "SKYTAP_VM_RAM",
+		},
+		mcnflag.BoolFlag{
+			Name:   "skytap-container-host",
+			Usage:  "Configures the VM as a container host.",
+			EnvVar: "SKYTAP_CONTAINER_HOST",
 		},
 	}
 }
@@ -345,6 +351,19 @@ func (d *Driver) Create() error {
 		if err != nil {
 			return err
 		}
+	}
+
+  // Mark as container host if requested
+  if d.ContainerHost == true {
+		log.Infof("Configuring VM as a container host")
+		vm, err = vm.SetContainerHost(client)
+		if err != nil {
+			return err
+		}
+		log.Infof("# To complete the configuration of this VM as a container host, wait for Docker Machine to finish")
+		log.Infof("# and then run the following commands to set the VM as the active machine and deploy the Skytap VM agent:")
+		log.Infof("# eval $(docker-machine env " + d.MachineName + ")")
+		log.Infof("# docker run -itd --name=skytap_agent --restart=always -v /var/run/docker.sock:/var/run/docker.sock skytap/agent")
 	}
 
 	// Just added a VM so pick the last one
@@ -616,6 +635,7 @@ func (d *Driver) SetConfigFromFlags(flags drivers.DriverOptions) error {
 		EnvironmentId: envId,
 		VPNId:         flags.String("skytap-vpn-id"),
 	}
+	d.ContainerHost = flags.Bool("skytap-container-host")
 	cpus := flags.Int("skytap-vm-cpus")
 	cpuspersocket := flags.Int("skytap-vm-cpuspersocket")
 	ram := flags.Int("skytap-vm-ram")

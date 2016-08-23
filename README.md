@@ -14,6 +14,7 @@ Command line flags, environment variables and default values. These flags are av
 | CLI flag                                 | Environment variable        | Default          | Description
 | ---------------------------------------- | ----------------------------| ---------------- | -----------
 | `--skytap-api-security-token`            | `SKYTAP_API_SECURITY_TOKEN` | -                | Your secret security token.
+| `--skytap-container-host`                | `SKYTAP_CONTAINER_HOST`     | `false`          | Configures the VM as a container host. 
 | `--skytap-env-id`                        | `SKYTAP_ENV_ID`             | `New`            | ID for the environment to add the VM to. Leave blank to create to a new environment.
 | `--skytap-ssh-key`                       | `SKYTAP_SSH_KEY`            | -                | SSH private key path (if not provided, identities in ssh-agent will be used).
 | `--skytap-ssh-port`                      | `SKYTAP_SSH_PORT`           | `22`             | SSH port.
